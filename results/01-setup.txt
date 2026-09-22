@@ -1,0 +1,75 @@
+================================================================
+Алхам 2: Нэгжийн тестлэл хийх хэрэгсэл суурилуулах
+Огноо: 2026-09-22 | Орчин: Windows 11, Git Bash
+================================================================
+
+$ node --version
+v24.18.0
+
+$ npm --version
+11.16.0
+
+----------------------------------------------------------------
+2.1 Node.js төсөл эхлүүлэх (package.json үүсгэх)
+----------------------------------------------------------------
+
+$ npm init -y
+Wrote to C:\THE_FEDzUP\hicheel\Программ хангамж хөгжүүлэлтийн процесс\Our-New-Web-App\package.json:
+
+{
+  "name": "our-new-web-app",
+  "version": "1.0.0",
+  "description": "Энэ бол бидний Программ хангамж хөгжүүлэлтийн процесс\r хичээлийн анхны төсөл.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Monkhtsetsen/Our-New-Web-App.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Monkhtsetsen/Our-New-Web-App/issues"
+  },
+  "homepage": "https://github.com/Monkhtsetsen/Our-New-Web-App#readme"
+}
+
+
+
+# ТАЙЛБАР: npm init -y нь README.md-ээс тайлбарыг автоматаар авсан тул
+# description-г гараар засаж, зааврын дагуу scripts.test = "jest" болгов.
+
+----------------------------------------------------------------
+2.2 Jest-г dev dependency болгон суурилуулах
+----------------------------------------------------------------
+
+$ npm install --save-dev jest
+npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+added 278 packages, and audited 279 packages in 8s
+
+48 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+npm warn allow-scripts 2 packages have install scripts not yet covered by allowScripts:
+npm warn allow-scripts   @parcel/watcher@2.6.0 (install: node scripts/build-from-source.js)
+npm warn allow-scripts   unrs-resolver@1.12.2 (postinstall: node postinstall.js)
+npm warn allow-scripts
+npm warn allow-scripts Run `npm approve-scripts --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to allow.
+
+$ npx jest --version
+30.5.2
+
+================================================================
+ДҮГНЭЛТ: Jest амжилттай суурилагдав.
+         package.json дотор "scripts": { "test": "jest" } тохируулсан
+         тул цаашид `npm test` командаар тестийг ажиллуулна.
+================================================================

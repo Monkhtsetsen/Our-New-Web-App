@@ -1,0 +1,33 @@
+{
+  "name": "our-new-web-app",
+  "version": "1.0.0",
+  "description": "AI-д суурилсан зорилго ба дадал хөтлөгч веб апп — Программ хангамж хөгжүүлэлтийн процесс хичээлийн багийн төсөл",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "jest",
+    "test:verbose": "jest --verbose"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Monkhtsetsen/Our-New-Web-App.git"
+  },
+  "keywords": [
+    "tdd",
+    "jest",
+    "unit-testing",
+    "definition-of-done"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Monkhtsetsen/Our-New-Web-App/issues"
+  },
+  "homepage": "https://github.com/Monkhtsetsen/Our-New-Web-App#readme",
+  "devDependencies": {
+    "jest": "^30.5.2"
+  }
+}

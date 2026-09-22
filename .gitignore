@@ -1,0 +1,17 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Тестийн бүрхэлтийн гаралт
+coverage/
+
+# Орчны тохиргоо
+.env
+.env.local
+
+# Засварлагч / ОС
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
