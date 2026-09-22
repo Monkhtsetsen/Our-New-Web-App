@@ -1,0 +1,52 @@
+================================================================
+3 дахь давталт — УЛААН шат
+Рефактор хийх явцад илэрсэн сул тал: typeof NaN === 'number'
+Тестийг эхэлж нэмэв. sum.js-д өөрчлөлт ОРУУЛААГҮЙ.
+================================================================
+
+$ node -e "console.log('typeof NaN      =', typeof NaN)"
+typeof NaN      = number
+$ node -e "console.log('typeof Infinity =', typeof Infinity)"
+typeof Infinity = number
+
+$ npm test
+
+> our-new-web-app@1.0.0 test
+> jest
+
+FAIL ./sum.test.js
+  √ 1 + 2 = 3 гарах ёстой (2 ms)
+  √ Тоо биш өгөгдөл өгвөл алдаа заана (6 ms)
+  × NaN эсвэл Infinity өгвөл алдаа заана (8 ms)
+
+  ● NaN эсвэл Infinity өгвөл алдаа заана
+
+    expect(received).toThrow(expected)
+
+    Expected substring: "Тоо оруулах шаардлагатай!"
+
+    Received function did not throw
+
+      31 | // бичиж улаан болгоод, дараа нь кодыг засна.
+      32 | test('NaN эсвэл Infinity өгвөл алдаа заана', () => {
+    > 33 |   expect(() => sum(NaN, 1)).toThrow('Тоо оруулах шаардлагатай!');
+         |                             ^
+      34 |   expect(() => sum(1, Infinity)).toThrow('Тоо оруулах шаардлагатай!');
+      35 | });
+      36 |
+
+      at Object.toThrow (sum.test.js:33:29)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 2 passed, 3 total
+Snapshots:   0 total
+Time:        0.544 s, estimated 1 s
+Ran all test suites.
+
+$ echo $?
+1
+
+----------------------------------------------------------------
+ҮР ДҮН: 2 passed, 1 failed — УЛААН. exit code 1.
+        Хүлээсэнчлэн sum(NaN, 1) алдаа шидэхгүй өнгөрч байна.
+----------------------------------------------------------------
