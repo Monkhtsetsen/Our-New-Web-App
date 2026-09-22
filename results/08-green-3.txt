@@ -1,0 +1,38 @@
+================================================================
+3 дахь давталт — НОГООН шат
+assertNumber доторх typeof шалгалтыг Number.isFinite болгов.
+================================================================
+
+Яагаад Number.isFinite вэ (глобал isFinite-тай харьцуулахад):
+
+$ node -e "...харьцуулалт..."
+утга        | isFinite() | Number.isFinite()
+------------|------------|------------------
+2           | true       | false
+NaN         | false      | false
+Infinity    | false      | false
+2 (тоо)     | true       | true
+
+$ npm test
+
+> our-new-web-app@1.0.0 test
+> jest
+
+PASS ./sum.test.js
+  √ 1 + 2 = 3 гарах ёстой (2 ms)
+  √ Тоо биш өгөгдөл өгвөл алдаа заана (3 ms)
+  √ NaN эсвэл Infinity өгвөл алдаа заана (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        0.45 s, estimated 1 s
+Ran all test suites.
+
+$ echo $?
+0
+
+----------------------------------------------------------------
+ҮР ДҮН: Tests: 3 passed, 3 total — НОГООН. exit code 0.
+        Гурав дахь УЛААН -> НОГООН давталт бүрэн хийгдэв.
+----------------------------------------------------------------

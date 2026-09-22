@@ -8,11 +8,18 @@ const ALDAANY_MEDEE = 'Тоо оруулах шаардлагатай!';
 /**
  * Өгөгдсөн утга тоо эсэхийг шалгана.
  *
+ * Number.isFinite-г сонгосон шалтгаан:
+ *   - typeof NaN === 'number' ба typeof Infinity === 'number' тул typeof
+ *     шалгалт эдгээрийг нэвтрүүлдэг байв.
+ *   - Number.isFinite нь аргументаа тоо руу ХӨРВҮҮЛДЭГГҮЙ тул '2' зэрэг
+ *     мөрийг мөн шууд няцаана (глобал isFinite('2') бол true буцаана).
+ * Ингэснээр гурван тохиолдлыг нэг шалгалтаар хамрав.
+ *
  * @param {*} value - Шалгах утга
- * @throws {Error} Утга тоо биш бол
+ * @throws {Error} Утга нь төгсгөлөг тоо биш бол
  */
 function assertNumber(value) {
-  if (typeof value !== 'number') {
+  if (!Number.isFinite(value)) {
     throw new Error(ALDAANY_MEDEE);
   }
 }
