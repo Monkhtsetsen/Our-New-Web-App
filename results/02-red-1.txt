@@ -1,0 +1,52 @@
+================================================================
+Алхам 3 — УЛААН шат
+Тестийг ЭХЭЛЖ бичив. sum.js хараахан үүсгээгүй.
+Хүлээгдэж буй үр дүн: тест АМЖИЛТГҮЙ (Улаан) болох ёстой.
+================================================================
+
+$ ls sum*
+sum.test.js
+
+$ npm test
+
+> our-new-web-app@1.0.0 test
+> jest
+
+FAIL ./sum.test.js
+  ● Test suite failed to run
+
+    Cannot find module './sum' from 'sum.test.js'
+
+    However, Jest was able to find:
+    	'../C:\THE_FEDzUP\hicheel\Программ хангамж хөгжүүлэлтийн процесс\Our-New-Web-App\sum.test.js'
+
+    You might want to include a file extension in your import, or update your 'moduleFileExtensions', which is currently ['js', 'mjs', 'cjs', 'jsx', 'ts', 'mts', 'cts', 'tsx', 'json', 'node'].
+
+    See https://jestjs.io/docs/configuration#modulefileextensions-arraystring
+
+      1 | // sum.test.js — ЭХЛЭЭД ТЕСТЛЭЛИЙГ БИЧИХ (TDD-ийн "Улаан" шат)
+    > 2 | const sum = require('./sum');
+        |             ^
+      3 |
+      4 | test('1 + 2 = 3 гарах ёстой', () => {
+      5 |   expect(sum(1, 2)).toBe(3);
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (sum.test.js:2:13)
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        0.388 s
+Ran all test suites.
+
+$ echo $?
+1
+
+----------------------------------------------------------------
+ҮР ДҮН: Test Suites: 1 failed — УЛААН. Шалтгаан:
+        'Cannot find module ./sum' — sum функц хараахан бичигдээгүй.
+        Энэ бол TDD-д ХҮЛЭЭГДЭЖ БУЙ, ЗӨВ үр дүн. Тест эхлээд унах ёстой,
+        эс бөгөөс тэр тест үнэхээр ямар нэг зүйл шалгаж байгаа эсэх нь
+        батлагдахгүй.
+----------------------------------------------------------------
