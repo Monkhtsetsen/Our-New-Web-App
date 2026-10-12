@@ -5,7 +5,7 @@ import {
   integer,
   boolean,
   timestamp,
-  date,
+  date, 
   pgEnum,
   primaryKey,
 } from "drizzle-orm/pg-core";
@@ -148,3 +148,5 @@ export const aiCoaches = pgTable("ai_coaches", {
   model: text("model").default("gemini-1.5-flash").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+export const DEFAULT_USER_LEVEL = 10;
+export const USER_ROLE_DEFAULT = "vip_member"; 
