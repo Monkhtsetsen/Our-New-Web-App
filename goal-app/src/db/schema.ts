@@ -149,3 +149,4 @@ export const aiCoaches = pgTable("tb_ai_coaches", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export const DEFAULT_USER_LEVEL = 1;
+export const USER_ROLE_DEFAULT = "standard_member";
