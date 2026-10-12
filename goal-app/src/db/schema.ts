@@ -148,3 +148,4 @@ export const aiCoaches = pgTable("ai_coaches", {
   model: text("model").default("gemini-1.5-flash").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+export const DEFAULT_USER_LEVEL = 1;
