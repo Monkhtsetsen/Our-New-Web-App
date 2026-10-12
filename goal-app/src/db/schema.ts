@@ -38,7 +38,7 @@ export const reportPeriodEnum = pgEnum("report_period", [
 
 export const coachStyleEnum = pgEnum("coach_style", ["hard", "low"]);
 
-export const users = pgTable("users", {
+export const users = pgTable("tb_users", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
@@ -51,7 +51,7 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const goals = pgTable("goals", {
+export const goals = pgTable("tb_goals", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
     .notNull()
@@ -65,7 +65,7 @@ export const goals = pgTable("goals", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const tasks = pgTable("tasks", {
+export const tasks = pgTable("tb_tasks", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
     .notNull()
@@ -80,7 +80,7 @@ export const tasks = pgTable("tasks", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const achievements = pgTable("achievements", {
+export const achievements = pgTable("tb_achievements", {
   id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),
   description: text("description").notNull(),
@@ -89,7 +89,7 @@ export const achievements = pgTable("achievements", {
 });
 
 export const userAchievements = pgTable(
-  "user_achievements",
+  "tb_user_achievements",
   {
     userId: uuid("user_id")
       .notNull()
@@ -104,7 +104,7 @@ export const userAchievements = pgTable(
   }),
 );
 
-export const friends = pgTable("friends", {
+export const friends = pgTable("tb_friends", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
     .notNull()
@@ -116,7 +116,7 @@ export const friends = pgTable("friends", {
   addedAt: timestamp("added_at").defaultNow().notNull(),
 });
 
-export const reminders = pgTable("reminders", {
+export const reminders = pgTable("tb_reminders", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
     .notNull()
@@ -127,7 +127,7 @@ export const reminders = pgTable("reminders", {
   enabled: boolean("enabled").default(true).notNull(),
 });
 
-export const reports = pgTable("reports", {
+export const reports = pgTable("tb_reports", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
     .notNull()
@@ -138,7 +138,7 @@ export const reports = pgTable("reports", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const aiCoaches = pgTable("ai_coaches", {
+export const aiCoaches = pgTable("tb_ai_coaches", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
     .notNull()
@@ -148,3 +148,5 @@ export const aiCoaches = pgTable("ai_coaches", {
   model: text("model").default("gemini-1.5-flash").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+export const DEFAULT_USER_LEVEL = 1;
+export const USER_ROLE_DEFAULT = "standard_member";
