@@ -14,9 +14,31 @@ AI болон Gamification (XP, Streaks, Achievements) ашиглан хувий
 
 ---
 
+## 🚀 Ажиллуулах
+
+```bash
+cd goal-app
+npm install
+cp .env.example .env.local   # дараа нь утгуудыг нь бөглөнө
+npm run dev
+```
+
+Апп `http://localhost:3000` дээр ажиллана.
+
+| Команд | Үүрэг |
+|---|---|
+| `npm run dev` | Хөгжүүлэлтийн сервер |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint шалгалт |
+| `npx drizzle-kit generate` | Schema-гийн өөрчлөлтөөс migration үүсгэх |
+
+---
+
 ## ⚙️ Environment Setup (.env.local)
 
-Төслийг local дээр ажиллуулахын тулд төслийн root фолдерт `.env.local` файл үүсгэж дараах тохиргоонуудыг оруулах шаардлагатай:
+Тохиргооны хувьсагчдын загварыг [`.env.example`](.env.example) файлд бэлтгэсэн.
+Түүнийг `goal-app/` хавтас дотор `.env.local` нэрээр хуулж аваад утгуудыг нь
+солино. `.env.local` нь `.gitignore`-д багтсан тул git-д орохгүй.
 
 ```env
 # Database Connection (Direct 5432 Connection)
