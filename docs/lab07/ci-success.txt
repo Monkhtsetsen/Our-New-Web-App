@@ -1,0 +1,47 @@
+========================================================================
+GitHub Actions CI — АМЖИЛТТАЙ (ногоон)
+========================================================================
+Repo   : Monkhtsetsen/Our-New-Web-App
+Салбар : feature/erka-ci-pipeline
+Run    : #38763877988
+URL    : https://github.com/Monkhtsetsen/Our-New-Web-App/actions/runs/38763877988
+ҮР ДҮН : success — бүх алхам давав
+========================================================================
+
+$ npm ci
+added 410 packages, and audited 411 packages in 10s
+9 vulnerabilities (4 moderate, 5 high)
+
+$ npm run lint
+> goal-app@0.1.0 lint
+> eslint
+
+$ npm test
+> goal-app@0.1.0 test
+> vitest run
+ RUN  v5.0.5 /home/runner/work/Our-New-Web-App/Our-New-Web-App/goal-app
+ ✓ src/db/schema.test.ts (19 tests) 9ms
+ Test Files  1 passed (1)
+
+$ npm run build
+> goal-app@0.1.0 build
+> next build
+▲ Next.js 16.4.0 (Turbopack)
+✓ Running next.config.ts took 24ms
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+- Cache Components enabled
+- Partial Prefetching enabled
+✓ Compiled successfully in 3.6s
+✓ Generating static pages using 3 workers (4/4) in 248ms
+Route (app)
+┌ ○ /
+└ ○ /_not-found
+○  (Static)  prerendered as static content
+(node:2597) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Cache hit occurred on the primary key node-cache-Linux-x64-npm-7a386b6a0e4094b80282c4e8f0456e2aeb09b9ae31866bb31dce851389490a7a, not saving cache.
+Adding repository directory to the temporary git global config as a safe directory
