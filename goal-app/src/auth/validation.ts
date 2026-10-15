@@ -16,16 +16,20 @@ export const PASSWORD_MIN_LENGTH = 8;
  */
 export const PASSWORD_MAX_LENGTH = 200;
 
-export const NAME_MAX_LENGTH = 100;
 export const EMAIL_MAX_LENGTH = 254; // RFC 5321-ийн хаягийн дээд урт
 
-export type SignupInput = {
-  name: string;
-  email: string;
-  password: string;
-};
+/** Улсын код бичээгүй 8 оронтой дугаарыг Монголынх гэж үзнэ. */
+export const DEFAULT_COUNTRY_CODE = "976";
+export const LOCAL_PHONE_LENGTH = 8;
 
-export type ValidationErrors = Partial<Record<keyof SignupInput, string>>;
+/** E.164 стандарт: улсын код оруулаад 8–15 орон. */
+const E164_MIN_DIGITS = 8;
+const E164_MAX_DIGITS = 15;
+
+export type ContactKind = "email" | "phone";
+
+/** Таньсан холбоо барих хаяг — хадгалахад бэлэн, цэгцэлсэн утгатай. */
+export type Contact = { kind: ContactKind; value: string };
 
 /**
  * Энгийн, хатуу бус хэлбэрийн шалгалт.
@@ -55,6 +59,70 @@ export function normalizeEmail(email: string): string {
 }
 
 /**
+ * Утасны дугаарыг E.164 хэлбэрт (`+97699112233`) шилжүүлнэ.
+ *
+ * Хүн бүр өөр өөрөөр бичдэг — `9911-2233`, `(99) 11 22 33`, `+976 9911 2233`.
+ * Эдгээрийг нэг хэлбэрт оруулахгүй бол ижил дугаараар олон бүртгэл үүсч,
+ * `unique` хязгаарлалт хоосон ажиллана.
+ *
+ * `+` тэмдэггүй 8 оронтой дугаарыг Монголынх гэж үзнэ. Бусад улсын дугаарыг
+ * `+` улсын кодтой нь бүтнээр бичнэ.
+ *
+ * @returns Цэгцэлсэн дугаар, эсвэл танихгүй бол `null`
+ */
+export function normalizePhone(raw: string): string | null {
+  // Хүмүүсийн ашигладаг тусгаарлагчийг хаяна.
+  const compact = raw.trim().replace(/[\s()\-.]/g, "");
+  if (!/^\+?\d+$/.test(compact)) return null;
+
+  const hasPlus = compact.startsWith("+");
+  let digits = hasPlus ? compact.slice(1) : compact;
+
+  if (!hasPlus && digits.length === LOCAL_PHONE_LENGTH) {
+    // Монголын дугаар 5–9-өөр эхэлдэг. Энэ шалгалт "12345678" мэтийг барина.
+    if (!/^[5-9]/.test(digits)) return null;
+    digits = DEFAULT_COUNTRY_CODE + digits;
+  }
+
+  if (digits.length < E164_MIN_DIGITS || digits.length > E164_MAX_DIGITS) {
+    return null;
+  }
+  if (digits.startsWith("0")) return null; // улсын код 0-оор эхлэхгүй
+
+  return `+${digits}`;
+}
+
+/**
+ * Оруулсан мөр и-мэйл үү, утас уу гэдгийг таана.
+ *
+ * `@` тэмдэг байвал и-мэйл гэж үзнэ — ингэснээр буруу бичсэн и-мэйлийг
+ * "утас биш байна" гэж будилуулахгүй, зөв алдааг нь хэлнэ.
+ *
+ * @returns Таньсан хаяг, эсвэл аль нь ч биш бол `null`
+ */
+export function parseContact(raw: string): Contact | null {
+  const trimmed = (raw ?? "").trim();
+  if (trimmed.length === 0) return null;
+
+  if (trimmed.includes("@")) {
+    const email = normalizeEmail(trimmed);
+    return looksLikeEmail(email) ? { kind: "email", value: email } : null;
+  }
+
+  const phone = normalizePhone(trimmed);
+  return phone === null ? null : { kind: "phone", value: phone };
+}
+
+export type SignupInput = {
+  /** И-мэйл эсвэл утасны дугаар — хэрэглэгч аль нэгийг нь сонгоно. */
+  contact: string;
+  password: string;
+  passwordConfirm: string;
+};
+
+export type ValidationErrors = Partial<Record<keyof SignupInput, string>>;
+
+/**
  * Бүртгэлийн оролтыг шалгаж, алдаануудыг талбар тус бүрээр буцаана.
  *
  * Хоосон объект буцвал оролт зөв гэсэн үг.
@@ -62,18 +130,11 @@ export function normalizeEmail(email: string): string {
 export function validateSignup(input: SignupInput): ValidationErrors {
   const errors: ValidationErrors = {};
 
-  const name = input.name?.trim() ?? "";
-  if (name.length === 0) {
-    errors.name = "Нэрээ оруулна уу";
-  } else if (name.length > NAME_MAX_LENGTH) {
-    errors.name = `Нэр ${NAME_MAX_LENGTH} тэмдэгтээс урт байж болохгүй`;
-  }
-
-  const email = normalizeEmail(input.email ?? "");
-  if (email.length === 0) {
-    errors.email = "И-мэйл хаягаа оруулна уу";
-  } else if (!looksLikeEmail(email)) {
-    errors.email = "И-мэйл хаяг буруу байна";
+  const contact = (input.contact ?? "").trim();
+  if (contact.length === 0) {
+    errors.contact = "И-мэйл эсвэл утасны дугаараа оруулна уу";
+  } else if (parseContact(contact) === null) {
+    errors.contact = "И-мэйл хаяг эсвэл утасны дугаар буруу байна";
   }
 
   const password = input.password ?? "";
@@ -83,6 +144,15 @@ export function validateSignup(input: SignupInput): ValidationErrors {
     errors.password = `Нууц үг дор хаяж ${PASSWORD_MIN_LENGTH} тэмдэгт байх ёстой`;
   } else if (password.length > PASSWORD_MAX_LENGTH) {
     errors.password = `Нууц үг ${PASSWORD_MAX_LENGTH} тэмдэгтээс урт байж болохгүй`;
+  }
+
+  // Давталтыг нууц үгийн чанараас үл хамааран шалгана: хэрэглэгч богино
+  // нууц үг бичсэн ч буруу давтсан бол хоёуланг нь нэг дор хэлэх нь дээр.
+  const confirm = input.passwordConfirm ?? "";
+  if (confirm.length === 0) {
+    errors.passwordConfirm = "Нууц үгээ давтан оруулна уу";
+  } else if (confirm !== password) {
+    errors.passwordConfirm = "Нууц үг таарахгүй байна";
   }
 
   return errors;
