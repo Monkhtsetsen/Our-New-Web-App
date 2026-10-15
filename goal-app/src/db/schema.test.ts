@@ -90,11 +90,34 @@ describe("Анхны утгын тогтмолууд", () => {
 });
 
 describe("tb_users баганууд", () => {
-  it("email нь давхцахгүй, заавал байх", () => {
+  // Бүртгэл и-мэйл ЭСВЭЛ утсаар үүсдэг тул аль нь ч дангаараа заавал биш.
+  // Гэхдээ хоёулаа давхцахгүй байх ёстой — нэг хаягаар хоёр бүртгэл болохгүй.
+  it("email заавал биш ч давхцахгүй", () => {
     const email = columnsOf(users).email;
 
-    expect(email.notNull).toBe(true);
+    expect(email.notNull).toBe(false);
     expect(email.isUnique).toBe(true);
+  });
+
+  it("phone заавал биш ч давхцахгүй", () => {
+    const phone = columnsOf(users).phone;
+
+    expect(phone.notNull).toBe(false);
+    expect(phone.isUnique).toBe(true);
+  });
+
+  // Хоёулаа хоосон бүртгэл үүсвэл тухайн хэрэглэгч рүү дахин хандах арга
+  // байхгүй болно (нууц үг сэргээх ч боломжгүй). ӨС түвшинд хориглоно.
+  it("и-мэйл, утас хоёулаа хоосон байхыг CHECK хориглоно", () => {
+    const { checks } = getTableConfig(users);
+    const contact = checks.find((c) => c.name === "tb_users_contact_required");
+
+    expect(contact, "tb_users_contact_required CHECK алга").toBeDefined();
+  });
+
+  it("нэр бүртгэлийн үед хоосон байж болно", () => {
+    // Нэрийг профайл дээр нөхөж бөглөдөг тул notNull байж болохгүй.
+    expect(columnsOf(users).name.notNull).toBe(false);
   });
 
   it("xp ба streak тэгээс эхэлнэ", () => {
