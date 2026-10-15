@@ -1,0 +1,98 @@
+================================================================
+Алхам 5-6: Merge conflict үүсгэж, шийдвэрлэх
+================================================================
+
+$ git checkout -b feature/erka-lab06 lab06/workflow-a
+Switched to a new branch 'feature/erka-lab06'
+
+$ git merge lab06/workflow-b
+Auto-merging CONTRIBUTING.md
+CONFLICT (add/add): Merge conflict in CONTRIBUTING.md
+Automatic merge failed; fix conflicts and then commit the result.
+
+$ git status --short
+AA CONTRIBUTING.md
+?? docs/
+
+$ git diff --name-only --diff-filter=U
+CONTRIBUTING.md
+
+----------------------------------------------------------------
+Conflict тэмдэглэгээ бүхий файлын агуулга
+----------------------------------------------------------------
+
+$ cat CONTRIBUTING.md
+# Хамтран ажиллах журам
+
+## Салбарын нэршил
+
+<<<<<<< HEAD
+Салбарыг `feature/<товч-тайлбар>` хэлбэрээр нэрлэнэ.
+
+    feature/user-login
+    feature/xp-calculation
+
+## Commit бичих
+
+Commit-ийн мессежийг монгол хэлээр, юу хийснийг тодорхой бичнэ.
+
+    Нэвтрэх хуудасны формыг нэмэв
+
+## Pull Request
+
+1. `main`-аас салбар гаргана
+2. Ажлаа дуусгаад PR нээнэ
+3. Багийн нэг гишүүнээр review хийлгэнэ
+4. Approve авсны дараа merge хийнэ
+
+Өөрийн PR-ээ өөрөө merge хийхгүй.
+=======
+Салбарыг `<issue дугаар>-<товч-нэр>` хэлбэрээр нэрлэнэ. Ингэснээр салбар
+аль даалгавартай холбоотой нь шууд харагдана.
+
+    24-personal-goal
+    27-initialize-project
+
+## Commit бичих
+
+Conventional Commits хэлбэрийг барина.
+
+    feat: add login form
+    fix: correct xp reward default
+
+## Pull Request
+
+1. Issue үүсгэнэ
+2. Тэр issue-гийн дугаараар салбар гаргана
+3. PR нээж, issue-г `Closes #24` гэж холбоно
+4. Хоёр гишүүнээр review хийлгэнэ
+5. CI ногоон болсны дараа merge хийнэ
+>>>>>>> lab06/workflow-b
+
+----------------------------------------------------------------
+Шийдвэрлэлт: аль нэгийг сонгохгүй, хоёуланг нь нэгтгэв
+----------------------------------------------------------------
+
+$ grep -c '<<<<<<<\|=======\|>>>>>>>' CONTRIBUTING.md
+0
+0  (тэмдэглэгээ үлдээгүй)
+
+$ git add CONTRIBUTING.md
+warning: in the working copy of 'CONTRIBUTING.md', LF will be replaced by CRLF the next time Git touches it
+
+$ git status --short
+M  CONTRIBUTING.md
+
+$ git commit
+OK
+
+$ git log --oneline --graph -6
+*   27b4040 Merge lab06/workflow-b: хамтран ажиллах журмын зөрчлийг шийдвэрлэв
+|\  
+| * e29de4b Хамтран ажиллах журмын ноорог нэмэв
+* | 86f1863 Хамтран ажиллах журмын ноорог нэмэв
+|/  
+*   c76bc72 Merge pull request #33 from Monkhtsetsen/feature/erka-schema-migration-fix
+|\  
+| * 75b4513 .env.example нэмж, ажиллуулах зааврыг README-д бичсэн
+| * 3c36749 Нүүр хуудсыг Next.js-ийн загвар хуудаснаас сольсон
