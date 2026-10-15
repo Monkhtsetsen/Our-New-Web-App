@@ -115,9 +115,8 @@ describe("tb_users баганууд", () => {
     expect(contact, "tb_users_contact_required CHECK алга").toBeDefined();
   });
 
-  it("нэр бүртгэлийн үед хоосон байж болно", () => {
-    // Нэрийг профайл дээр нөхөж бөглөдөг тул notNull байж болохгүй.
-    expect(columnsOf(users).name.notNull).toBe(false);
+  it("нэр заавал байх", () => {
+    expect(columnsOf(users).name.notNull).toBe(true);
   });
 
   it("xp ба streak тэгээс эхэлнэ", () => {

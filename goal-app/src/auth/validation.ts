@@ -16,6 +16,7 @@ export const PASSWORD_MIN_LENGTH = 8;
  */
 export const PASSWORD_MAX_LENGTH = 200;
 
+export const NAME_MAX_LENGTH = 100;
 export const EMAIL_MAX_LENGTH = 254; // RFC 5321-ийн хаягийн дээд урт
 
 /** Улсын код бичээгүй 8 оронтой дугаарыг Монголынх гэж үзнэ. */
@@ -114,6 +115,7 @@ export function parseContact(raw: string): Contact | null {
 }
 
 export type SignupInput = {
+  name: string;
   /** И-мэйл эсвэл утасны дугаар — хэрэглэгч аль нэгийг нь сонгоно. */
   contact: string;
   password: string;
@@ -129,6 +131,13 @@ export type ValidationErrors = Partial<Record<keyof SignupInput, string>>;
  */
 export function validateSignup(input: SignupInput): ValidationErrors {
   const errors: ValidationErrors = {};
+
+  const name = (input.name ?? "").trim();
+  if (name.length === 0) {
+    errors.name = "Нэрээ оруулна уу";
+  } else if (name.length > NAME_MAX_LENGTH) {
+    errors.name = `Нэр ${NAME_MAX_LENGTH} тэмдэгтээс урт байж болохгүй`;
+  }
 
   const contact = (input.contact ?? "").trim();
   if (contact.length === 0) {

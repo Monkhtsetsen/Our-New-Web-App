@@ -8,6 +8,7 @@ import {
 } from "./validation";
 
 const VALID = {
+  name: "Эрдэнэбаяр",
   contact: "erka@example.com",
   password: "nuuts-ug-2026",
   passwordConfirm: "nuuts-ug-2026",
@@ -29,6 +30,24 @@ describe("validateSignup — зөв оролт", () => {
     expect(
       validateSignup({ ...VALID, password: long, passwordConfirm: long }),
     ).toEqual({});
+  });
+});
+
+describe("Нэр", () => {
+  it("хоосон бол алдаа", () => {
+    expect(validateSignup({ ...VALID, name: "" }).name).toBe("Нэрээ оруулна уу");
+  });
+
+  it("зөвхөн хоосон зай бол алдаа", () => {
+    expect(validateSignup({ ...VALID, name: "   " }).name).toBe(
+      "Нэрээ оруулна уу",
+    );
+  });
+
+  it("хэт урт бол алдаа", () => {
+    expect(validateSignup({ ...VALID, name: "a".repeat(101) }).name).toContain(
+      "урт байж болохгүй",
+    );
   });
 });
 
@@ -219,6 +238,7 @@ describe("normalizeEmail", () => {
 describe("Олон алдаа зэрэг", () => {
   it("талбар бүрийн алдааг тусад нь буцаана", () => {
     const errors = validateSignup({
+      name: "",
       contact: "abc",
       password: "123",
       passwordConfirm: "456",
@@ -226,6 +246,7 @@ describe("Олон алдаа зэрэг", () => {
 
     expect(Object.keys(errors).sort()).toEqual([
       "contact",
+      "name",
       "password",
       "passwordConfirm",
     ]);

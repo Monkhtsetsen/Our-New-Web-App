@@ -49,14 +49,12 @@ export const coachStyleEnum = pgEnum("coach_style", ["hard", "low"]);
  * давхцахгүй (unique) байх ёстой: нэг дугаараар хоёр бүртгэл үүсгэхээс
  * сэргийлнэ.
  *
- * `name` нь бүртгэлийн үед хоосон байна. Хэрэглэгч эхлээд хурдан орж,
- * нэр зэрэг үлдсэн мэдээллээ профайл дээрээ нөхөж бөглөнө.
  */
 export const users = pgTable(
   "tb_users",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    name: text("name"),
+    name: text("name").notNull(),
     email: text("email").unique(),
     phone: text("phone").unique(),
     passwordHash: text("password_hash").notNull(),

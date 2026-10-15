@@ -11,7 +11,7 @@ export type SignupState = {
   errors?: ValidationErrors;
   formError?: string;
   /** Алдаа гарвал хэрэглэгч дахин бичихгүйн тулд оролтыг буцаана. */
-  values?: { contact: string };
+  values?: { name: string; contact: string };
   success?: boolean;
 };
 
@@ -28,14 +28,20 @@ export async function signup(
   _prev: SignupState,
   formData: FormData,
 ): Promise<SignupState> {
+  const name = String(formData.get("name") ?? "").trim();
   const rawContact = String(formData.get("contact") ?? "");
   const password = String(formData.get("password") ?? "");
   const passwordConfirm = String(formData.get("passwordConfirm") ?? "");
 
   // Хөтөч дээрх шалгалтыг тойрч ирэх боломжтой тул энд дахин шалгана.
-  const errors = validateSignup({ contact: rawContact, password, passwordConfirm });
+  const errors = validateSignup({
+    name,
+    contact: rawContact,
+    password,
+    passwordConfirm,
+  });
   if (Object.keys(errors).length > 0) {
-    return { errors, values: { contact: rawContact } };
+    return { errors, values: { name, contact: rawContact } };
   }
 
   const contact = parseContact(rawContact);
@@ -43,7 +49,7 @@ export async function signup(
     // validateSignup үүнийг аль хэдийн барисан байх ёстой — давхар хамгаалалт.
     return {
       errors: { contact: INVALID_CONTACT },
-      values: { contact: rawContact },
+      values: { name, contact: rawContact },
     };
   }
 
@@ -71,7 +77,7 @@ export async function signup(
               ? "Энэ и-мэйл бүртгэлтэй байна"
               : "Энэ дугаар бүртгэлтэй байна",
         },
-        values: { contact: rawContact },
+        values: { name, contact: rawContact },
       };
     }
 
@@ -79,11 +85,10 @@ export async function signup(
 
     // level, xp, streak-ийг зааж өгөхгүй — схем дээрх анхны утга (1, 0, 0)
     // хүчинтэй байх ёстой. Хоёр газар давхардуулж бичих нь салж явах эрсдэлтэй.
-    // name-ийг мөн бичихгүй: хэрэглэгч профайл дээрээ нөхөж бөглөнө.
     await db.insert(users).values(
       contact.kind === "email"
-        ? { email: contact.value, passwordHash }
-        : { phone: contact.value, passwordHash },
+        ? { name, email: contact.value, passwordHash }
+        : { name, phone: contact.value, passwordHash },
     );
 
     return { success: true };
@@ -95,7 +100,7 @@ export async function signup(
     return {
       formError:
         "Одоогоор бүртгэл үүсгэх боломжгүй байна. Хэсэг хүлээгээд дахин оролдоно уу.",
-      values: { contact: rawContact },
+      values: { name, contact: rawContact },
     };
   }
 }

@@ -54,17 +54,27 @@ type PasswordFieldProps = {
   error?: string;
   /** Алдаа байхгүй үед харуулах тайлбар. */
   hint?: string;
+  /** Харагдах төлөв формын түвшинд — хоёр талбар хамт нээгдэж, хамт нуугдана. */
+  visible: boolean;
+  onToggleVisible: () => void;
 };
 
 /**
  * Нууц үгийн талбар, харах/нуух товчтой.
  *
- * Товч нь `type="button"` — эс бөгөөс форм илгээгдэнэ. Харагдах төлөв нь
- * талбар тус бүрдээ тусдаа: нууц үгээ харж байгаад давталтаа нуусан хэвээр
- * шалгах боломжтой.
+ * Товч нь `type="button"` — эс бөгөөс форм илгээгдэнэ. Харагдах төлөвийг
+ * өөртөө хадгалахгүй: нууц үгээ шалгахдаа хоёр талбараа зэрэг харах нь
+ * зүйн хэрэг тул аль ч товч хоёуланг нь зэрэг нээнэ.
  */
-function PasswordField({ id, name, label, error, hint }: PasswordFieldProps) {
-  const [visible, setVisible] = useState(false);
+function PasswordField({
+  id,
+  name,
+  label,
+  error,
+  hint,
+  visible,
+  onToggleVisible,
+}: PasswordFieldProps) {
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
 
   return (
@@ -86,8 +96,9 @@ function PasswordField({ id, name, label, error, hint }: PasswordFieldProps) {
 
         <button
           type="button"
-          onClick={() => setVisible((shown) => !shown)}
-          aria-label={visible ? `${label} нуух` : `${label} харах`}
+          onClick={onToggleVisible}
+          // Товч хоёуланг нь удирддаг тул талбарын нэрээр биш, ерөнхийгөөр нэрлэв.
+          aria-label={visible ? "Нууц үгийг нуух" : "Нууц үгийг харуулах"}
           aria-pressed={visible}
           className="absolute inset-y-0 right-0 mt-1.5 flex w-11 items-center justify-center rounded-r-md text-zinc-500 transition-colors hover:text-zinc-800 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 dark:text-zinc-500 dark:hover:text-zinc-200"
         >
@@ -129,6 +140,10 @@ const INITIAL: SignupState = {};
 export function SignupForm() {
   const [state, formAction] = useActionState(signup, INITIAL);
 
+  // Хоёр талбарт нийтлэг төлөв — аль ч нүдийг дарахад хоёулаа нээгдэнэ.
+  const [passwordsVisible, setPasswordsVisible] = useState(false);
+  const togglePasswords = () => setPasswordsVisible((shown) => !shown);
+
   if (state.success) {
     return (
       <div
@@ -139,7 +154,7 @@ export function SignupForm() {
           Бүртгэл амжилттай үүслээ.
         </p>
         <p className="mt-1 text-sm leading-6 text-green-800 dark:text-green-300">
-          Одоо нэвтэрч орон, нэр зэрэг үлдсэн мэдээллээ профайл дээрээ нэмнэ үү.
+          Одоо нэвтэрч орох боломжтой.
         </p>
       </div>
     );
@@ -158,6 +173,27 @@ export function SignupForm() {
 
       <div className="space-y-5">
         <div>
+          <label htmlFor="name" className={LABEL_CLASS}>
+            Нэр
+          </label>
+          <input
+            id="name"
+            name="name"
+            type="text"
+            autoComplete="name"
+            defaultValue={state.values?.name}
+            aria-invalid={Boolean(state.errors?.name)}
+            aria-describedby={state.errors?.name ? "name-error" : undefined}
+            className={INPUT_CLASS}
+          />
+          {state.errors?.name && (
+            <p id="name-error" className={ERROR_CLASS}>
+              {state.errors.name}
+            </p>
+          )}
+        </div>
+
+        <div>
           <label htmlFor="contact" className={LABEL_CLASS}>
             И-мэйл эсвэл утасны дугаар
           </label>
@@ -168,7 +204,7 @@ export function SignupForm() {
             // Нэвтрэх нэрийн үүрэгтэй тул "username" — хөтөч и-мэйл, утас
             // хоёуланг нь энэ нэрээр санадаг.
             autoComplete="username"
-            placeholder="erka@example.com эсвэл 9911 2233"
+            placeholder="name@example.com эсвэл 9911 2233"
             defaultValue={state.values?.contact}
             aria-invalid={Boolean(state.errors?.contact)}
             aria-describedby={
@@ -193,6 +229,8 @@ export function SignupForm() {
           label="Нууц үг"
           error={state.errors?.password}
           hint={`Дор хаяж ${PASSWORD_MIN_LENGTH} тэмдэгт. Урт өгүүлбэр ч болно.`}
+          visible={passwordsVisible}
+          onToggleVisible={togglePasswords}
         />
 
         <PasswordField
@@ -200,6 +238,8 @@ export function SignupForm() {
           name="passwordConfirm"
           label="Нууц үг давтах"
           error={state.errors?.passwordConfirm}
+          visible={passwordsVisible}
+          onToggleVisible={togglePasswords}
         />
       </div>
 
