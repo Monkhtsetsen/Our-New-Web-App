@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# .env.example-д нууц утга байхгүй, зөвхөн хувьсагчийн нэрс.
+# Шинэ хүн ямар тохиргоо хэрэгтэйг эндээс л мэдэх тул git-д орох ёстой.
+!.env.example
 
 # vercel
 .vercel
