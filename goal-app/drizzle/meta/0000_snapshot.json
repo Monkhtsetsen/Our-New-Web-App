@@ -1,11 +1,11 @@
 {
-  "id": "c1af0dd0-3723-45f5-9d7a-f88f3909d57f",
+  "id": "8ae0601d-82bf-40a1-b860-06d55cb302c0",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.achievements": {
-      "name": "achievements",
+    "public.tb_achievements": {
+      "name": "tb_achievements",
       "schema": "",
       "columns": {
         "id": {
@@ -49,8 +49,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.ai_coaches": {
-      "name": "ai_coaches",
+    "public.tb_ai_coaches": {
+      "name": "tb_ai_coaches",
       "schema": "",
       "columns": {
         "id": {
@@ -91,10 +91,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "ai_coaches_user_id_users_id_fk": {
-          "name": "ai_coaches_user_id_users_id_fk",
-          "tableFrom": "ai_coaches",
-          "tableTo": "users",
+        "tb_ai_coaches_user_id_tb_users_id_fk": {
+          "name": "tb_ai_coaches_user_id_tb_users_id_fk",
+          "tableFrom": "tb_ai_coaches",
+          "tableTo": "tb_users",
           "columnsFrom": [
             "user_id"
           ],
@@ -107,8 +107,8 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "ai_coaches_user_id_unique": {
-          "name": "ai_coaches_user_id_unique",
+        "tb_ai_coaches_user_id_unique": {
+          "name": "tb_ai_coaches_user_id_unique",
           "nullsNotDistinct": false,
           "columns": [
             "user_id"
@@ -119,8 +119,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.friends": {
-      "name": "friends",
+    "public.tb_friends": {
+      "name": "tb_friends",
       "schema": "",
       "columns": {
         "id": {
@@ -160,10 +160,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "friends_user_id_users_id_fk": {
-          "name": "friends_user_id_users_id_fk",
-          "tableFrom": "friends",
-          "tableTo": "users",
+        "tb_friends_user_id_tb_users_id_fk": {
+          "name": "tb_friends_user_id_tb_users_id_fk",
+          "tableFrom": "tb_friends",
+          "tableTo": "tb_users",
           "columnsFrom": [
             "user_id"
           ],
@@ -173,10 +173,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "friends_friend_user_id_users_id_fk": {
-          "name": "friends_friend_user_id_users_id_fk",
-          "tableFrom": "friends",
-          "tableTo": "users",
+        "tb_friends_friend_user_id_tb_users_id_fk": {
+          "name": "tb_friends_friend_user_id_tb_users_id_fk",
+          "tableFrom": "tb_friends",
+          "tableTo": "tb_users",
           "columnsFrom": [
             "friend_user_id"
           ],
@@ -193,8 +193,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.goals": {
-      "name": "goals",
+    "public.tb_goals": {
+      "name": "tb_goals",
       "schema": "",
       "columns": {
         "id": {
@@ -261,10 +261,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "goals_user_id_users_id_fk": {
-          "name": "goals_user_id_users_id_fk",
-          "tableFrom": "goals",
-          "tableTo": "users",
+        "tb_goals_user_id_tb_users_id_fk": {
+          "name": "tb_goals_user_id_tb_users_id_fk",
+          "tableFrom": "tb_goals",
+          "tableTo": "tb_users",
           "columnsFrom": [
             "user_id"
           ],
@@ -281,8 +281,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.reminders": {
-      "name": "reminders",
+    "public.tb_reminders": {
+      "name": "tb_reminders",
       "schema": "",
       "columns": {
         "id": {
@@ -326,10 +326,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "reminders_user_id_users_id_fk": {
-          "name": "reminders_user_id_users_id_fk",
-          "tableFrom": "reminders",
-          "tableTo": "users",
+        "tb_reminders_user_id_tb_users_id_fk": {
+          "name": "tb_reminders_user_id_tb_users_id_fk",
+          "tableFrom": "tb_reminders",
+          "tableTo": "tb_users",
           "columnsFrom": [
             "user_id"
           ],
@@ -339,10 +339,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "reminders_task_id_tasks_id_fk": {
-          "name": "reminders_task_id_tasks_id_fk",
-          "tableFrom": "reminders",
-          "tableTo": "tasks",
+        "tb_reminders_task_id_tb_tasks_id_fk": {
+          "name": "tb_reminders_task_id_tb_tasks_id_fk",
+          "tableFrom": "tb_reminders",
+          "tableTo": "tb_tasks",
           "columnsFrom": [
             "task_id"
           ],
@@ -359,8 +359,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.reports": {
-      "name": "reports",
+    "public.tb_reports": {
+      "name": "tb_reports",
       "schema": "",
       "columns": {
         "id": {
@@ -407,10 +407,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "reports_user_id_users_id_fk": {
-          "name": "reports_user_id_users_id_fk",
-          "tableFrom": "reports",
-          "tableTo": "users",
+        "tb_reports_user_id_tb_users_id_fk": {
+          "name": "tb_reports_user_id_tb_users_id_fk",
+          "tableFrom": "tb_reports",
+          "tableTo": "tb_users",
           "columnsFrom": [
             "user_id"
           ],
@@ -427,8 +427,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.tasks": {
-      "name": "tasks",
+    "public.tb_tasks": {
+      "name": "tb_tasks",
       "schema": "",
       "columns": {
         "id": {
@@ -499,10 +499,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "tasks_user_id_users_id_fk": {
-          "name": "tasks_user_id_users_id_fk",
-          "tableFrom": "tasks",
-          "tableTo": "users",
+        "tb_tasks_user_id_tb_users_id_fk": {
+          "name": "tb_tasks_user_id_tb_users_id_fk",
+          "tableFrom": "tb_tasks",
+          "tableTo": "tb_users",
           "columnsFrom": [
             "user_id"
           ],
@@ -512,10 +512,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "tasks_goal_id_goals_id_fk": {
-          "name": "tasks_goal_id_goals_id_fk",
-          "tableFrom": "tasks",
-          "tableTo": "goals",
+        "tb_tasks_goal_id_tb_goals_id_fk": {
+          "name": "tb_tasks_goal_id_tb_goals_id_fk",
+          "tableFrom": "tb_tasks",
+          "tableTo": "tb_goals",
           "columnsFrom": [
             "goal_id"
           ],
@@ -532,8 +532,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.user_achievements": {
-      "name": "user_achievements",
+    "public.tb_user_achievements": {
+      "name": "tb_user_achievements",
       "schema": "",
       "columns": {
         "user_id": {
@@ -558,10 +558,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "user_achievements_user_id_users_id_fk": {
-          "name": "user_achievements_user_id_users_id_fk",
-          "tableFrom": "user_achievements",
-          "tableTo": "users",
+        "tb_user_achievements_user_id_tb_users_id_fk": {
+          "name": "tb_user_achievements_user_id_tb_users_id_fk",
+          "tableFrom": "tb_user_achievements",
+          "tableTo": "tb_users",
           "columnsFrom": [
             "user_id"
           ],
@@ -571,10 +571,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "user_achievements_achievement_id_achievements_id_fk": {
-          "name": "user_achievements_achievement_id_achievements_id_fk",
-          "tableFrom": "user_achievements",
-          "tableTo": "achievements",
+        "tb_user_achievements_achievement_id_tb_achievements_id_fk": {
+          "name": "tb_user_achievements_achievement_id_tb_achievements_id_fk",
+          "tableFrom": "tb_user_achievements",
+          "tableTo": "tb_achievements",
           "columnsFrom": [
             "achievement_id"
           ],
@@ -586,8 +586,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "user_achievements_user_id_achievement_id_pk": {
-          "name": "user_achievements_user_id_achievement_id_pk",
+        "tb_user_achievements_user_id_achievement_id_pk": {
+          "name": "tb_user_achievements_user_id_achievement_id_pk",
           "columns": [
             "user_id",
             "achievement_id"
@@ -599,8 +599,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.users": {
-      "name": "users",
+    "public.tb_users": {
+      "name": "tb_users",
       "schema": "",
       "columns": {
         "id": {
@@ -620,7 +620,7 @@
           "name": "email",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "phone": {
           "name": "phone",
@@ -674,16 +674,28 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "users_email_unique": {
-          "name": "users_email_unique",
+        "tb_users_email_unique": {
+          "name": "tb_users_email_unique",
           "nullsNotDistinct": false,
           "columns": [
             "email"
           ]
+        },
+        "tb_users_phone_unique": {
+          "name": "tb_users_phone_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "phone"
+          ]
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "tb_users_contact_required": {
+          "name": "tb_users_contact_required",
+          "value": "\"tb_users\".\"email\" IS NOT NULL OR \"tb_users\".\"phone\" IS NOT NULL"
+        }
+      },
       "isRLSEnabled": false
     }
   },

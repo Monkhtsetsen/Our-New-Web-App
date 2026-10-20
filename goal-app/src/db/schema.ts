@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   uuid,
@@ -8,6 +9,7 @@ import {
   date,
   pgEnum,
   primaryKey,
+  check,
 } from "drizzle-orm/pg-core";
 
 export const goalCategoryEnum = pgEnum("goal_category", [
@@ -38,18 +40,37 @@ export const reportPeriodEnum = pgEnum("report_period", [
 
 export const coachStyleEnum = pgEnum("coach_style", ["hard", "low"]);
 
-export const users = pgTable("tb_users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  phone: text("phone"),
-  passwordHash: text("password_hash").notNull(),
-  level: integer("level").default(1).notNull(),
-  xp: integer("xp").default(0).notNull(),
-  streak: integer("streak").default(0).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+/**
+ * Хэрэглэгч.
+ *
+ * Бүртгэл нь и-мэйл ЭСВЭЛ утасны дугаарын аль нэгээр үүснэ — хоёуланг нь
+ * шаардахгүй. Иймд `email`, `phone` хоёр тус тусдаа хоосон байж болох ч
+ * хоёулаа зэрэг хоосон байхыг доорх CHECK хориглоно. Харин хоёулаа
+ * давхцахгүй (unique) байх ёстой: нэг дугаараар хоёр бүртгэл үүсгэхээс
+ * сэргийлнэ.
+ *
+ */
+export const users = pgTable(
+  "tb_users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    email: text("email").unique(),
+    phone: text("phone").unique(),
+    passwordHash: text("password_hash").notNull(),
+    level: integer("level").default(1).notNull(),
+    xp: integer("xp").default(0).notNull(),
+    streak: integer("streak").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      "tb_users_contact_required",
+      sql`${table.email} IS NOT NULL OR ${table.phone} IS NOT NULL`,
+    ),
+  ],
+);
 
 export const goals = pgTable("tb_goals", {
   id: uuid("id").primaryKey().defaultRandom(),
