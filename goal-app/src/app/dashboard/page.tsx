@@ -4,8 +4,8 @@ export default function DashboardPage() {
       <h1>Dashboard</h1>
 
       <section>
-        <h2>My Profile</h2>
-        <p>Manage your personal information.</p>
+        <h2>Overview</h2>
+        <p>Welcome to the dashboard.</p>
       </section>
     </main>
   );
