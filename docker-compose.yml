@@ -1,0 +1,54 @@
+# Goal App — локал орчинд апп + өгөгдлийн санг зэрэг ажиллуулах.
+#
+#   docker compose up --build
+#
+# Supabase нээгдэхээс өмнө бүртгүүлэх урсгалыг жинхэнэ PostgreSQL дээр
+# турших боломж олгоно. Схемийг ӨС рүү буулгахдаа:
+#
+#   docker compose exec app node_modules/.bin/drizzle-kit migrate
+#
+# эсвэл локалаасаа:
+#
+#   DATABASE_URL=postgresql://goal:goal_local_dev@localhost:5432/goal_app #     npm run db:migrate
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: goal-app-db
+    environment:
+      # ЗӨВХӨН ЛОКАЛ ХӨГЖҮҮЛЭЛТЭД. Үйлдвэрлэлийн орчинд энэ утгыг
+      # хэзээ ч ашиглахгүй — Supabase өөрийн нууц үгийг өгнө.
+      POSTGRES_USER: goal
+      POSTGRES_PASSWORD: goal_local_dev
+      POSTGRES_DB: goal_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Апп нь ӨС бэлэн болохоос өмнө асвал холболтын алдаа өгнө.
+      # Тиймээс "ажиллаж байна" биш "хүсэлт хүлээж авахад бэлэн" гэдгийг
+      # шалгана.
+      test: ["CMD-SHELL", "pg_isready -U goal -d goal_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ./goal-app
+    container_name: goal-app
+    ports:
+      - "3000:3000"
+    environment:
+      # Хост нь "localhost" биш "db". Контейнер бүр өөрийн сүлжээний
+      # орон зайтай тул localhost нь аппын өөрийнх нь контейнерийг
+      # заана. Compose нь сервисийн нэрийг DNS болгож өгдөг.
+      DATABASE_URL: postgresql://goal:goal_local_dev@db:5432/goal_app
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

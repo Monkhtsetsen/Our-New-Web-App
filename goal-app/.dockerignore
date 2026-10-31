@@ -1,0 +1,34 @@
+# Docker build-ийн контекстэд ОРОХГҮЙ зүйлс.
+#
+# Эдгээрийг хасахгүй бол: (1) контекст 500 МБ+ болж build удаашрана,
+# (2) .env доторх нууц утгууд image дотор шатаж үлдэнэ,
+# (3) локал node_modules нь image доторхыг дарж бичих эрсдэлтэй.
+
+# Хамаарал ба build-ийн үр дүн — image дотор шинээр үүснэ
+node_modules
+.next
+out
+dist
+coverage
+
+# Нууц утгууд — ЭНЭ МӨРИЙГ БҮҮ УСТГА
+.env
+.env.*
+!.env.example
+
+# Git ба бичиг баримт
+.git
+.gitignore
+README.md
+AGENTS.md
+
+# Docker өөрийн файлууд
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Засварлагч, ҮС-ийн хог
+.vscode
+.idea
+.DS_Store
+*.log
