@@ -1,0 +1,11 @@
+docker run -d --name goal-app -p 3000:3000 goal-app:1.0
+docker logs goal-app
+GitHub Actions run 41186551402
+========================================================================
+
+docker logs goal-app | tee docker-run.log
+▲ Next.js 16.4.3
+- Local:         http://localhost:3000
+- Network:       http://0.0.0.0:3000
+✓ Ready in 0ms
+✓ Running next.config took 1.5ms

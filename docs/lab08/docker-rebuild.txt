@@ -1,0 +1,113 @@
+app/page.tsx-д нэг мөр нэмсний дараах дахин build
+docker build --progress=plain -t goal-app:1.1 goal-app
+GitHub Actions run 41186551402
+========================================================================
+
+echo "" >> goal-app/app/page.tsx
+echo "// layer caching-ийг шалгах зорилгоор нэмсэн мөр" >> goal-app/app/page.tsx
+docker build --progress=plain -t goal-app:1.1 goal-app 2>&1             | tee docker-rebuild.log
+echo "──────────────────────────────────────────────"
+echo "Кэшнээс ирсэн алхам: $(grep -c 'CACHED' docker-rebuild.log || echo 0)"
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.80kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 DONE 0.3s
+
+#3 docker-image://docker.io/docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/node:24-alpine
+#4 DONE 0.3s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 865B done
+#5 DONE 0.0s
+
+#6 [deps 1/5] FROM docker.io/library/node:24-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 4.27kB done
+#7 DONE 0.0s
+
+#8 [deps 4/5] COPY package.json package-lock.json ./
+#8 CACHED
+
+#9 [builder 2/5] WORKDIR /app
+#9 CACHED
+
+#10 [deps 2/5] RUN apk add --no-cache libc6-compat
+#10 CACHED
+
+#11 [deps 3/5] WORKDIR /app
+#11 CACHED
+
+#12 [deps 5/5] RUN npm ci
+#12 CACHED
+
+#13 [builder 3/5] COPY --from=deps /app/node_modules ./node_modules
+#13 CACHED
+
+#14 [builder 4/5] COPY . .
+#14 DONE 0.0s
+
+#15 [builder 5/5] RUN npm run build
+#15 0.446 
+#15 0.446 > goal-app@0.1.0 build
+#15 0.446 > next build
+#15 0.446 
+#15 0.886 ▲ Next.js 16.4.3 (Turbopack)
+#15 0.931 ✓ Running next.config.ts took 44ms
+#15 0.951 - Cache Components enabled
+#15 0.951 - Partial Prefetching enabled
+#15 0.951 
+#15 0.978   Creating an optimized production build ...
+#15 4.472 ✓ Compiled successfully in 3.5s
+#15 4.474   Running TypeScript ...
+#15 7.459   Finished TypeScript in 3.0s ...
+#15 7.462   Collecting page data using 3 workers ...
+#15 8.049   Generating static pages using 3 workers (0/4) ...
+#15 8.184   Generating static pages using 3 workers (1/4) 
+#15 8.281   Generating static pages using 3 workers (2/4) 
+#15 8.281   Generating static pages using 3 workers (3/4) 
+#15 8.282 ✓ Generating static pages using 3 workers (4/4) in 234ms
+#15 8.287   Finalizing page optimization ...
+#15 8.417 
+#15 8.419 Route (app)
+#15 8.419 ┌ ○ /
+#15 8.419 └ ○ /_not-found
+#15 8.419 
+#15 8.419 
+#15 8.419 ○  (Static)  prerendered as static content
+#15 8.419 
+#15 8.469 npm notice
+#15 8.469 npm notice New major version of npm available! 11.19.1 -> 12.2.1
+#15 8.469 npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+#15 8.469 npm notice To update run: npm install -g npm@12.2.1
+#15 8.469 npm notice
+#15 DONE 8.5s
+
+#16 [runner 3/6] RUN addgroup --system --gid 1001 nodejs  && adduser --system --uid 1001 nextjs
+#16 CACHED
+
+#17 [runner 4/6] COPY --from=builder /app/public ./public
+#17 CACHED
+
+#18 [runner 5/6] COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+#18 DONE 0.1s
+
+#19 [runner 6/6] COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+#19 DONE 0.0s
+
+#20 exporting to image
+#20 exporting layers
+#20 exporting layers 0.8s done
+#20 writing image sha256:4fa75dab5822866ee5720728b5fec01211c0d3f6c2b8ab097e95fae5fd55348e done
+#20 naming to docker.io/library/goal-app:1.1 done
+#20 DONE 0.8s
+──────────────────────────────────────────────
+Кэшнээс ирсэн алхам: 9
