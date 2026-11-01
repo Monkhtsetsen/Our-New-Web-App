@@ -39,3 +39,70 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+  # ===================================================================
+  # Лаб 8 — Dockerfile-ыг жинхэнэ орчинд шалгана.
+  #
+  # Зөвхөн бичсэн Dockerfile нь ажиллана гэсэн баталгаа биш. Энд үнэхээр
+  # image бүтээж, контейнер асааж, хүсэлт илгээж хариу авна. Мөн layer
+  # caching ажиллаж буйг гаралтаар нь нотолно.
+  # ===================================================================
+  docker:
+    name: Docker image бүтээх ба ажиллуулах
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Кодыг татах
+        uses: actions/checkout@v5
+
+      - name: Docker хувилбар
+        run: docker --version
+
+      - name: Image бүтээх (хүйтэн, кэшгүй)
+        run: |
+          docker build --progress=plain -t goal-app:1.0 goal-app 2>&1             | tee docker-build.log
+
+      - name: Image-ийн хэмжээ
+        run: docker image ls goal-app:1.0
+
+      - name: Контейнер ажиллуулах
+        run: docker run -d --name goal-app -p 3000:3000 goal-app:1.0
+
+      - name: Апп хариу өгч байгааг шалгах
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ || true)
+            if [ "$code" = "200" ]; then
+              echo "HTTP $code — апп хариу өгч байна"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Апп 60 секундын дотор хариу өгсөнгүй"
+          docker logs goal-app
+          exit 1
+
+      - name: Контейнерийн лог
+        run: docker logs goal-app | tee docker-run.log
+
+      - name: Layer caching — кодод жижиг өөрчлөлт оруулаад дахин build
+        run: |
+          echo "" >> goal-app/app/page.tsx
+          echo "// layer caching-ийг шалгах зорилгоор нэмсэн мөр" >> goal-app/app/page.tsx
+          docker build --progress=plain -t goal-app:1.1 goal-app 2>&1             | tee docker-rebuild.log
+          echo "──────────────────────────────────────────────"
+          echo "Кэшнээс ирсэн алхам: $(grep -c 'CACHED' docker-rebuild.log || echo 0)"
+
+      - name: Логуудыг хадгалах
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-logs
+          path: |
+            docker-build.log
+            docker-run.log
+            docker-rebuild.log
+
+      - name: Цэвэрлэх
+        if: always()
+        run: docker rm -f goal-app || true
