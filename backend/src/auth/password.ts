@@ -45,6 +45,69 @@ const ALGORITHM = "scrypt";
 const SEPARATOR = "$";
 
 /**
+ * Зэрэг ажиллах hash-ийн дээд тоо.
+ *
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * ЯАГААД ХЯЗГААРЛАХ ЁСТОЙ ВЭ
+ *
+ * scrypt нь зориуд санах ой иддэг: N·r·128 = 131072·8·128 ≈ 128 МБ
+ * нэг тооцоололд. Энэ нь GPU-гаар эвдэхийг үнэтэй болгодог давуу
+ * тал — гэхдээ хамгаалалтгүй орхивол өөрийн эсрэг эргэнэ.
+ *
+ * Хэрэв 20 хүн зэрэг нэвтрэхийг оролдвол 20 × 128 МБ = 2.5 ГБ
+ * шаардагдана. Ердийн контейнер 512 МБ-тай байдаг тул процесс
+ * санах ой дүүрч унана — өөрөөр хэлбэл хэн ч хэдхэн хүсэлтээр
+ * серверийг унагаах боломжтой болно.
+ *
+ * Энэ хаалга нь зэрэг ажиллахыг хоёроор хязгаарлана: санах ойн
+ * дээд хэрэглээ ~256 МБ болж тогтоно. Бусад хүсэлт ээлжиндээ
+ * хүлээнэ — удаан боловч унахаас дээр.
+ *
+ * (Хүсэлтийн хязгаарлагч нь нэг IP-г барьдаг; энэ нь бүх эх
+ * үүсвэрээс ирэх нийт ачааллыг барина. Хоёулаа хэрэгтэй.)
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ */
+const MAX_CONCURRENT_HASHES = 2;
+
+let activeHashes = 0;
+const waiting: Array<() => void> = [];
+
+function acquireSlot(): Promise<void> | undefined {
+  if (activeHashes < MAX_CONCURRENT_HASHES) {
+    activeHashes += 1;
+    return undefined;
+  }
+  return new Promise<void>((resolve) => waiting.push(resolve));
+}
+
+/**
+ * Суудлыг чөлөөлнө.
+ *
+ * Хүлээгч байвал тоолуурыг БУУРУУЛАХГҮЙ, суудлыг шууд түүнд
+ * шилжүүлнэ. Эс бөгөөс буурах ба хүлээгч сэрэх хоёрын хооронд
+ * шинэ дуудлага орж ирээд хязгаар давах эрсдэлтэй.
+ */
+function releaseSlot(): void {
+  const next = waiting.shift();
+  if (next !== undefined) {
+    next();
+    return;
+  }
+  activeHashes -= 1;
+}
+
+async function withSlot<T>(run: () => Promise<T>): Promise<T> {
+  const wait = acquireSlot();
+  if (wait !== undefined) await wait;
+
+  try {
+    return await run();
+  } finally {
+    releaseSlot();
+  }
+}
+
+/**
  * Нууц үгийг hash болгоно.
  *
  * Буцаах утга нь өөрөө параметрээ агуулсан мөр тул ирээдүйд параметр
@@ -64,10 +127,9 @@ export async function hashPassword(plain: string): Promise<string> {
   }
 
   const salt = randomBytes(SALT_LENGTH);
-  const derived = await scryptAsync(plain, salt, KEY_LENGTH, {
-    ...PARAMS,
-    maxmem: MAX_MEM,
-  });
+  const derived = await withSlot(() =>
+    scryptAsync(plain, salt, KEY_LENGTH, { ...PARAMS, maxmem: MAX_MEM }),
+  );
 
   return [
     ALGORITHM,
@@ -138,12 +200,9 @@ export async function verifyPassword(
 
   let actual: Buffer;
   try {
-    actual = await scryptAsync(plain, salt, expected.length, {
-      N,
-      r,
-      p,
-      maxmem: MAX_MEM,
-    });
+    actual = await withSlot(() =>
+      scryptAsync(plain, salt, expected.length, { N, r, p, maxmem: MAX_MEM }),
+    );
   } catch {
     // Гэмтэлтэй параметр (ж.нь хэт том N) scrypt-ийг унагаана.
     return false;
