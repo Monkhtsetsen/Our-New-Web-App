@@ -27,7 +27,9 @@ export type FieldName =
   | "email"
   | "phone"
   | "currentPassword"
-  | "newPassword";
+  | "newPassword"
+  | "title"
+  | "description";
 
 export type FieldErrors = Partial<Record<FieldName, string>>;
 
@@ -207,6 +209,37 @@ export function updateProfile(
     method: "PUT",
     body: input,
   });
+}
+
+/** Backend-ийн goal_category enum-тэй тохирно. */
+export type GoalCategory = "study" | "career" | "finance" | "health" | "personal";
+
+/** Backend-ийн goal_status enum-тэй тохирно. */
+export type GoalStatus = "in_progress" | "completed" | "abandoned";
+
+export type Goal = {
+  id: string;
+  title: string;
+  description: string | null;
+  category: GoalCategory;
+  /** "YYYY-MM-DD" эсвэл null. Цагийн бүс оролцуулахгүй. */
+  deadline: string | null;
+  status: GoalStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function listGoals(): Promise<ApiResult<{ goals: Goal[] }>> {
+  return request<{ goals: Goal[] }>("/api/goals", { method: "GET" });
+}
+
+export type NewGoal = {
+  title: string;
+  description?: string;
+};
+
+export function createGoal(input: NewGoal): Promise<ApiResult<{ goal: Goal }>> {
+  return request<{ goal: Goal }>("/api/goals", { method: "POST", body: input });
 }
 
 /** Backend амьд эсэхийг шалгана. Нүүр хуудсан дээрх төлөв харуулахад. */

@@ -218,3 +218,33 @@ describe("POST /api/auth/logout", () => {
     expect(String(cookies)).toContain("goal_session=;");
   });
 });
+
+describe("/api/goals — нэвтрэхийг шаардана", () => {
+  // ӨС рүү хүрэхээс өмнө таслагдана: cookie байхгүй.
+  it("cookie-гүй бол жагсаалт 401", async () => {
+    const res = await request(app).get("/api/goals");
+
+    expect(res.status).toBe(401);
+  });
+
+  it("cookie-гүй бол үүсгэх 401", async () => {
+    const res = await request(app)
+      .post("/api/goals")
+      .send({ title: "Марафон гүйх" });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("өөр түлхүүрээр зохиосон token-оор орж болохгүй", async () => {
+    const forged = signToken(
+      { sub: "11111111-2222-3333-4444-555555555555", role: "user", tv: 0 },
+      "attacker-own-secret-at-least-32-characters",
+    );
+
+    const res = await request(app)
+      .get("/api/goals")
+      .set("Cookie", `goal_session=${forged}`);
+
+    expect(res.status).toBe(401);
+  });
+});

@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import { healthRouter } from "./routes/health.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createUsersRouter } from "./routes/users.js";
+import { createGoalsRouter } from "./routes/goals.js";
 import type { AuthConfig } from "./auth/session.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { notFound } from "./middleware/not-found.js";
@@ -52,6 +53,7 @@ export function createApp({
   app.use("/health", healthRouter);
   app.use("/api/auth", createAuthRouter(auth));
   app.use("/api/users", createUsersRouter(auth));
+  app.use("/api/goals", createGoalsRouter(auth));
 
   app.use(notFound);
   app.use(errorHandler);

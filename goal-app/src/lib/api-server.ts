@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import type { User } from "./api";
+import type { Goal, User } from "./api";
 
 /**
  * Серверийн талаас backend рүү хандах.
@@ -64,4 +64,43 @@ export async function getSessionUser(): Promise<User | null> {
     // эргэлзээтэй үед НЭЭХГҮЙ байх нь зөв тал руугаа алдаж буй хэрэг.
     return null;
   }
+}
+
+/**
+ * Сервер талаас өгөгдөл татах ерөнхий туслах.
+ *
+ * Cookie-г гараар дамжуулж байгаа нь санаатай: Next.js-ийн сервер нь
+ * хөтчийн хүсэлтийн cookie-г автоматаар цааш зөөдөггүй. Мартвал
+ * backend 401 буцаана.
+ */
+async function fetchAsUser<T>(path: string): Promise<T | null> {
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value;
+
+  if (token === undefined || token.length === 0) return null;
+
+  try {
+    const res = await fetch(`${INTERNAL_API_URL}${path}`, {
+      headers: { cookie: `${SESSION_COOKIE}=${token}` },
+      cache: "no-store",
+    });
+
+    if (!res.ok) return null;
+
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Хэрэглэгчийн зорилгууд.
+ *
+ * @returns Жагсаалт, эсвэл татаж чадаагүй бол `null`. Хоосон жагсаалт
+ *   (`[]`) ба алдаа (`null`) хоёрыг ЯЛГАЖ буцаана — "зорилго алга" ба
+ *   "уншиж чадсангүй" хоёр тэс өөр зүйл, хуудас өөр өөр зүйл харуулна.
+ */
+export async function getGoals(): Promise<Goal[] | null> {
+  const body = await fetchAsUser<{ goals: Goal[] }>("/api/goals");
+  return body?.goals ?? null;
 }

@@ -55,6 +55,9 @@ async function SessionLinks() {
       <Link href="/dashboard" className={LINK_CLASS}>
         Самбар
       </Link>
+      <Link href="/goals" className={LINK_CLASS}>
+        Зорилгууд
+      </Link>
 
       {/*
         Админ холбоосыг зөвхөн админд харуулна. Энэ нь ТОХЬ болохоос

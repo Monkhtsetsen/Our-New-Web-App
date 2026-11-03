@@ -110,5 +110,10 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 // Edge орчинд биш). Тиймээс `process.env`-ийг ажиллах үедээ уншина —
 // BACKEND_INTERNAL_URL-ийг контейнер асах үед өгч болно.
 export const config = {
-  matcher: ["/dashboard/:path*", "/profile/:path*", "/admin/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/goals/:path*",
+    "/profile/:path*",
+    "/admin/:path*",
+  ],
 };

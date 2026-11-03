@@ -394,6 +394,73 @@ jobs:
 
           echo "БҮГД АМЖИЛТТАЙ"
 
+      - name: Зорилгын урсгалыг шалгах
+        run: |
+          API=http://localhost:4000
+          WEB=http://localhost:3000
+
+          # Хоёр ӨӨР хэрэглэгчээр нэвтэрнэ — тусгаарлалтыг шалгахад хэрэгтэй.
+          curl -s -o /dev/null -c ann.txt             -X POST $API/api/auth/login -H "Content-Type: application/json"             -d '{"contact":"alias@example.com","password":"nuuts-ug-2026"}'
+          curl -s -o /dev/null -c bob.txt             -X POST $API/api/auth/login -H "Content-Type: application/json"             -d '{"contact":"escalate@example.com","password":"nuuts-ug-2026"}'
+
+          echo "--- 34. Нэвтрээгүй бол 401 ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" $API/api/goals)
+          [ "$code" = "401" ] || { echo "ХАМГААЛАЛТГҮЙ: $code"; exit 1; }
+
+          echo "--- 35. Зорилго үүсгэх → 201 ---"
+          code=$(curl -s -o g1.json -w "%{http_code}" -b ann.txt             -X POST $API/api/goals -H "Content-Type: application/json"             -d '{"title":"Хагас марафон гүйх","description":"Намар 21 км"}')
+          cat g1.json; echo
+          [ "$code" = "201" ] || { echo "ХҮЛЭЭСЭН 201, ИРСЭН $code"; exit 1; }
+          grep -q '"status":"in_progress"' g1.json || { echo "анхны төлөв буруу"; exit 1; }
+          grep -q '"category":"personal"' g1.json || { echo "анхны ангилал буруу"; exit 1; }
+
+          echo "--- 36. Үүсгэсэн зорилго жагсаалтад гарна ---"
+          curl -s -b ann.txt $API/api/goals -o list.json
+          grep -q "Хагас марафон гүйх" list.json || { echo "жагсаалтад алга"; exit 1; }
+
+          echo "--- 37. Нэргүй → 400 ---"
+          code=$(curl -s -o bad.json -w "%{http_code}" -b ann.txt             -X POST $API/api/goals -H "Content-Type: application/json" -d '{"title":"  "}')
+          [ "$code" = "400" ] || { echo "ХҮЛЭЭСЭН 400, ИРСЭН $code"; exit 1; }
+
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          # ХАМГИЙН ЧУХАЛ ШАЛГАЛТ.
+          #
+          # Нэг хэрэглэгч нөгөөгийнхөө өгөгдлийг харах нь OWASP-ийн API
+          # жагсаалтын нэгдүгээр алдаа. `where(userId = ...)` нэг мартахад
+          # шууд үүснэ — тиймээс машинаар барина.
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          echo "--- 38. Өөр хэрэглэгчийн зорилго ХАРАГДАХГҮЙ ---"
+          curl -s -b bob.txt $API/api/goals -o bob-list.json
+          cat bob-list.json; echo
+          grep -q "Хагас марафон гүйх" bob-list.json && {
+            echo "ӨГӨГДӨЛ ЗАДАРЛАА — өөр хэрэглэгчийн зорилго харагдав"
+            exit 1
+          }
+          grep -q '"goals":\[\]' bob-list.json || { echo "хоосон жагсаалт хүлээсэн"; exit 1; }
+
+          echo "--- 39. userId-г хүсэлтээр тогтоох БОЛОМЖГҮЙ ---"
+          ANN_ID=$(grep -o '"id":"[^"]*"' g1.json | head -1 | cut -d'"' -f4)
+          curl -s -o esc.json -b bob.txt             -X POST $API/api/goals -H "Content-Type: application/json"             -d '{"title":"Залилан","userId":"'"$ANN_ID"'","status":"completed","id":"00000000-0000-0000-0000-000000000000"}'
+          cat esc.json; echo
+          grep -q '"status":"in_progress"' esc.json || { echo "ТӨЛӨВИЙГ ХҮСЭЛТЭЭР ТОГТООВ"; exit 1; }
+          grep -q '"id":"00000000-0000-0000-0000-000000000000"' esc.json && {
+            echo "ID-Г ХҮСЭЛТЭЭР ТОГТООВ"; exit 1; }
+          # Энэ зорилго bob-д л харагдана, ann-д биш.
+          curl -s -b ann.txt $API/api/goals | grep -q "Залилан" && {
+            echo "ӨӨР ХЭРЭГЛЭГЧИЙН НЭР ДЭЭР БИЧИГДЭВ"; exit 1; }
+
+          echo "--- 40. Frontend /goals — нэвтрээгүй бол нэвтрэх хуудас руу ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" $WEB/goals)
+          [ "$code" = "307" ] || { echo "ХҮЛЭЭСЭН 307, ИРСЭН $code"; exit 1; }
+
+          echo "--- 41. Frontend /goals — нэвтэрсэн бол зорилго харагдана ---"
+          code=$(curl -s -o goals.html -w "%{http_code}" -b ann.txt $WEB/goals)
+          echo "HTTP $code"
+          [ "$code" = "200" ] || { echo "ХҮЛЭЭСЭН 200, ИРСЭН $code"; exit 1; }
+          grep -q "Хагас марафон гүйх" goals.html || { echo "зорилго хуудсан дээр алга"; exit 1; }
+
+          echo "ЗОРИЛГЫН ХЭСЭГ АМЖИЛТТАЙ"
+
       - name: Сервисүүдийн лог
         if: always()
         run: docker compose logs --no-color | tee docker-run.log
