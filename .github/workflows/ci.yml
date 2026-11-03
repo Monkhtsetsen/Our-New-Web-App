@@ -109,8 +109,8 @@ jobs:
       - name: Frontend бэлэн болохыг хүлээх
         run: |
           for i in $(seq 1 40); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/signup || true)
-            if [ "$code" = "200" ]; then echo "frontend /signup → HTTP 200"; exit 0; fi
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/register || true)
+            if [ "$code" = "200" ]; then echo "frontend /register → HTTP 200"; exit 0; fi
             sleep 3
           done
           echo "Frontend хариу өгсөнгүй"; docker compose logs frontend; exit 1
@@ -142,7 +142,7 @@ jobs:
         run: |
           echo "--- 1. Зөв хүсэлт → 201 хүлээнэ ---"
           code=$(curl -s -o signup.json -w "%{http_code}" \
-            -X POST http://localhost:4000/api/auth/signup \
+            -X POST http://localhost:4000/api/auth/register \
             -H "Content-Type: application/json" \
             -d '{"name":"Туршилт","contact":"test@example.com","password":"nuuts-ug-2026"}')
           cat signup.json; echo
@@ -157,7 +157,7 @@ jobs:
 
           echo "--- 3. Ижил и-мэйлээр дахин → 409 хүлээнэ ---"
           code=$(curl -s -o dup.json -w "%{http_code}" \
-            -X POST http://localhost:4000/api/auth/signup \
+            -X POST http://localhost:4000/api/auth/register \
             -H "Content-Type: application/json" \
             -d '{"name":"Өөр хүн","contact":"TEST@example.com","password":"өөр-нууц-үг-2026"}')
           cat dup.json; echo
@@ -165,7 +165,7 @@ jobs:
 
           echo "--- 4. Буруу оролт → 400 хүлээнэ ---"
           code=$(curl -s -o bad.json -w "%{http_code}" \
-            -X POST http://localhost:4000/api/auth/signup \
+            -X POST http://localhost:4000/api/auth/register \
             -H "Content-Type: application/json" \
             -d '{"name":"","contact":"abc","password":"123"}')
           cat bad.json; echo
@@ -173,7 +173,7 @@ jobs:
 
           echo "--- 5. Утсаар бүртгэх → 201, дугаар E.164 болсон байх ---"
           code=$(curl -s -o phone.json -w "%{http_code}" \
-            -X POST http://localhost:4000/api/auth/signup \
+            -X POST http://localhost:4000/api/auth/register \
             -H "Content-Type: application/json" \
             -d '{"name":"Утастай","contact":"9911-2233","password":"nuuts-ug-2026"}')
           cat phone.json; echo
@@ -181,17 +181,198 @@ jobs:
           grep -q '"phone":"+97699112233"' phone.json || { echo "дугаар цэгцлэгдээгүй"; exit 1; }
 
           echo "--- 6. role-ийг хүсэлтээр админ болгох БОЛОМЖГҮЙ ---"
-          curl -s -o esc.json             -X POST http://localhost:4000/api/auth/signup             -H "Content-Type: application/json"             -d '{"name":"Заль","contact":"escalate@example.com","password":"nuuts-ug-2026","role":"admin"}'
+          curl -s -o esc.json \
+            -X POST http://localhost:4000/api/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Заль","contact":"escalate@example.com","password":"nuuts-ug-2026","role":"admin"}'
           cat esc.json; echo
           grep -q '"role":"user"' esc.json || { echo "ЭРХ ШУРГУУЛАВ"; exit 1; }
 
-          echo "--- 7. robots.txt нь /admin-ийг хаасан байх ---"
-          curl -s http://localhost:3000/robots.txt | tee robots.txt
+          echo "--- 7. Хуучин /signup зам ажилласаар байх ---"
+          code=$(curl -s -o alias.json -w "%{http_code}" \
+            -X POST http://localhost:4000/api/auth/signup \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Хуучин зам","contact":"alias@example.com","password":"nuuts-ug-2026"}')
+          [ "$code" = "201" ] || { echo "/signup эвдэрсэн: $code"; exit 1; }
+
+          echo "БҮРТГЭЛИЙН ХЭСЭГ АМЖИЛТТАЙ"
+
+      - name: Нэвтрэх, профайлын урсгалыг бүтнээр нь шалгах
+        run: |
+          API=http://localhost:4000
+          CONTACT=test@example.com
+          PASS=nuuts-ug-2026
+
+          echo "--- 8. Буруу нууц үг → 401 ---"
+          code=$(curl -s -o wrong.json -w "%{http_code}" \
+            -X POST $API/api/auth/login -H "Content-Type: application/json" \
+            -d "{\"contact\":\"$CONTACT\",\"password\":\"buruu-nuuts-ug\"}")
+          cat wrong.json; echo
+          [ "$code" = "401" ] || { echo "ХҮЛЭЭСЭН 401, ИРСЭН $code"; exit 1; }
+
+          echo "--- 9. Байхгүй хаягийн алдаа нь ИЖИЛ байх ---"
+          curl -s -o missing.json \
+            -X POST $API/api/auth/login -H "Content-Type: application/json" \
+            -d '{"contact":"baihgui@example.com","password":"buruu-nuuts-ug"}'
+          cat missing.json; echo
+          diff wrong.json missing.json || {
+            echo "АЛДААНЫ МЕССЕЖ ЯЛГААТАЙ — ямар хаяг бүртгэлтэйг таах боломжтой"
+            exit 1
+          }
+
+          echo "--- 10. Зөв нэвтрэх → 200 + HttpOnly cookie ---"
+          code=$(curl -s -o login.json -w "%{http_code}" -c jar.txt -D headers.txt \
+            -X POST $API/api/auth/login -H "Content-Type: application/json" \
+            -d "{\"contact\":\"$CONTACT\",\"password\":\"$PASS\"}")
+          cat login.json; echo
+          [ "$code" = "200" ] || { echo "ХҮЛЭЭСЭН 200, ИРСЭН $code"; exit 1; }
+          grep -i "set-cookie" headers.txt
+          grep -i "set-cookie" headers.txt | grep -qi "HttpOnly" || { echo "HttpOnly алга"; exit 1; }
+          grep -i "set-cookie" headers.txt | grep -qi "SameSite=Lax" || { echo "SameSite алга"; exit 1; }
+          grep -q "passwordHash" login.json && { echo "hash задарлаа"; exit 1; }
+
+          echo "--- 11. Cookie-гүйгээр /me → 401 ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" $API/api/users/me)
+          [ "$code" = "401" ] || { echo "ХАМГААЛАЛТГҮЙ БАЙНА: $code"; exit 1; }
+
+          echo "--- 12. Cookie-тэй /me → 200 ---"
+          code=$(curl -s -o me.json -w "%{http_code}" -b jar.txt $API/api/users/me)
+          cat me.json; echo
+          [ "$code" = "200" ] || { echo "ХҮЛЭЭСЭН 200, ИРСЭН $code"; exit 1; }
+          grep -q "$CONTACT" me.json || { echo "өөр хэрэглэгч ирлээ"; exit 1; }
+
+          echo "--- 13. Нэр солих → 200 ---"
+          code=$(curl -s -o rename.json -w "%{http_code}" -b jar.txt \
+            -X PUT $API/api/users/me -H "Content-Type: application/json" \
+            -d '{"name":"Шинэ нэр"}')
+          cat rename.json; echo
+          [ "$code" = "200" ] || { echo "ХҮЛЭЭСЭН 200, ИРСЭН $code"; exit 1; }
+          grep -q '"name":"Шинэ нэр"' rename.json || { echo "нэр солигдсонгүй"; exit 1; }
+
+          echo "--- 14. PUT-ээр өөрийгөө админ болгох БОЛОМЖГҮЙ ---"
+          curl -s -o escalate.json -b jar.txt \
+            -X PUT $API/api/users/me -H "Content-Type: application/json" \
+            -d '{"name":"Заль 2","role":"admin","level":99,"xp":100000}'
+          cat escalate.json; echo
+          grep -q '"role":"user"' escalate.json || { echo "ЭРХ ШУРГУУЛАВ"; exit 1; }
+          grep -q '"level":1' escalate.json || { echo "ОНОО ГАРААРАА НЭМЭГДЛЭЭ"; exit 1; }
+
+          echo "--- 15. Одоогийн нууц үггүйгээр и-мэйл солих → 400 ---"
+          code=$(curl -s -o noconf.json -w "%{http_code}" -b jar.txt \
+            -X PUT $API/api/users/me -H "Content-Type: application/json" \
+            -d '{"email":"shine@example.com"}')
+          cat noconf.json; echo
+          [ "$code" = "400" ] || { echo "БАТАЛГААЖУУЛАЛТГҮЙ ӨНГӨРЛӨӨ: $code"; exit 1; }
+
+          echo "--- 16. Буруу одоогийн нууц үгээр → 401 ---"
+          code=$(curl -s -o badconf.json -w "%{http_code}" -b jar.txt \
+            -X PUT $API/api/users/me -H "Content-Type: application/json" \
+            -d '{"newPassword":"shine-nuuts-ug-2026","currentPassword":"buruu"}')
+          [ "$code" = "401" ] || { echo "БУРУУ НУУЦ ҮГ ӨНГӨРЛӨӨ: $code"; exit 1; }
+
+          echo "--- 17. Сүүлчийн холбоо барих хаягийг устгах БОЛОМЖГҮЙ ---"
+          code=$(curl -s -o noclear.json -w "%{http_code}" -b jar.txt \
+            -X PUT $API/api/users/me -H "Content-Type: application/json" \
+            -d "{\"email\":\"\",\"currentPassword\":\"$PASS\"}")
+          cat noclear.json; echo
+          [ "$code" = "400" ] || { echo "ХОЛБОО БАРИХ ХАЯГГҮЙ ҮЛДЛЭЭ: $code"; exit 1; }
+
+          echo "--- 18. Нууц үг солих → 200 ---"
+          cp jar.txt old-jar.txt
+          code=$(curl -s -o changed.json -w "%{http_code}" -b jar.txt -c jar.txt \
+            -X PUT $API/api/users/me -H "Content-Type: application/json" \
+            -d "{\"newPassword\":\"shine-nuuts-ug-2026\",\"currentPassword\":\"$PASS\"}")
+          [ "$code" = "200" ] || { echo "ХҮЛЭЭСЭН 200, ИРСЭН $code"; exit 1; }
+
+          echo "--- 19. ХУУЧИН token нууц үг солигдсоны дараа хүчингүй ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -b old-jar.txt $API/api/users/me)
+          [ "$code" = "401" ] || {
+            echo "ХУУЧИН TOKEN ХҮЧИНТЭЙ ХЭВЭЭР: $code — хулгайлагдсан сесс таслагдахгүй"
+            exit 1
+          }
+
+          echo "--- 20. Шинэ cookie ажиллаж байх ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -b jar.txt $API/api/users/me)
+          [ "$code" = "200" ] || { echo "өөрийн сесс тасарлаа: $code"; exit 1; }
+
+          echo "--- 21. Хуучин нууц үгээр нэвтрэх БОЛОМЖГҮЙ ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST $API/api/auth/login -H "Content-Type: application/json" \
+            -d "{\"contact\":\"$CONTACT\",\"password\":\"$PASS\"}")
+          [ "$code" = "401" ] || { echo "ХУУЧИН НУУЦ ҮГ АЖИЛЛАСААР: $code"; exit 1; }
+
+          echo "--- 22. Шинэ нууц үгээр нэвтрэх → 200 ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -c jar.txt \
+            -X POST $API/api/auth/login -H "Content-Type: application/json" \
+            -d "{\"contact\":\"$CONTACT\",\"password\":\"shine-nuuts-ug-2026\"}")
+          [ "$code" = "200" ] || { echo "ХҮЛЭЭСЭН 200, ИРСЭН $code"; exit 1; }
+
+          echo "--- 23. Гарсны дараа cookie хүчингүй ---"
+          curl -s -o /dev/null -b jar.txt -c jar.txt -X POST $API/api/auth/logout
+          code=$(curl -s -o /dev/null -w "%{http_code}" -b jar.txt $API/api/users/me)
+          [ "$code" = "401" ] || { echo "ГАРСАН Ч СЕСС ҮЛДЛЭЭ: $code"; exit 1; }
+
+          echo "НЭВТРЭХ, ПРОФАЙЛЫН ХЭСЭГ АМЖИЛТТАЙ"
+
+      - name: Frontend-ийн хамгаалалттай замуудыг шалгах
+        run: |
+          WEB=http://localhost:3000
+          API=http://localhost:4000
+
+          echo "--- 24. robots.txt нь /admin-ийг хаасан байх ---"
+          curl -s $WEB/robots.txt | tee robots.txt
           grep -q "Disallow: /admin" robots.txt || { echo "robots.txt буруу"; exit 1; }
 
-          echo "--- 8. /admin хуудас noindex байх ---"
-          curl -s http://localhost:3000/admin | grep -o 'name="robots" content="[^"]*"' | head -1
-          curl -s http://localhost:3000/admin | grep -q 'content="noindex' || { echo "noindex алга"; exit 1; }
+          echo "--- 25. Хуучин /signup хаяг /register рүү шилжинэ ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" $WEB/signup)
+          echo "HTTP $code"
+          [ "$code" = "308" ] || { echo "ХҮЛЭЭСЭН 308, ИРСЭН $code"; exit 1; }
+
+          echo "--- 26. Нэвтрээгүй бол /profile → нэвтрэх хуудас руу ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -D p.txt $WEB/profile)
+          grep -i "^location:" p.txt
+          [ "$code" = "307" ] || { echo "ХҮЛЭЭСЭН 307, ИРСЭН $code"; exit 1; }
+          grep -i "^location:" p.txt | grep -q "/login" || { echo "буруу зам руу"; exit 1; }
+
+          echo "--- 27. Нэвтрээгүй бол /admin → нэвтрэх хуудас руу ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" $WEB/admin)
+          [ "$code" = "307" ] || { echo "ХҮЛЭЭСЭН 307, ИРСЭН $code"; exit 1; }
+
+          # Админы хуудсыг таних тэмдэг. React нь текстийг хэд хэдэн
+          # зангилаа болгон задалдаг тул тасархай бус, бүтэн өгүүлбэр
+          # сонгосон нь санаатай.
+          MARKER="Удирдлагын хэрэгслүүд"
+
+          echo "--- 28. Энгийн хэрэглэгч /admin руу орвол 404 ---"
+          curl -s -o /dev/null -c web-jar.txt \
+            -X POST $API/api/auth/login -H "Content-Type: application/json" \
+            -d '{"contact":"escalate@example.com","password":"nuuts-ug-2026"}'
+          code=$(curl -s -o user-admin.html -w "%{http_code}" -b web-jar.txt $WEB/admin)
+          echo "HTTP $code"
+          grep -q "$MARKER" user-admin.html && {
+            echo "ЭНГИЙН ХЭРЭГЛЭГЧИД АДМИНЫ АГУУЛГА ХАРАГДЛАА"
+            exit 1
+          }
+          [ "$code" = "404" ] || { echo "ХҮЛЭЭСЭН 404, ИРСЭН $code"; exit 1; }
+
+          echo "--- 29. /profile дээр хог cookie-гоор өгөгдөл гарахгүй ---"
+          code=$(curl -s -o fake.html -w "%{http_code}" \
+            -b "goal_session=forged-token-value" -D f.txt $WEB/profile)
+          echo "HTTP $code"
+          grep -qi "^location:.*\/login" f.txt || {
+            echo "ХУУРАМЧ COOKIE-ТОЙ ХҮНИЙГ НЭВТРЭХ ХУУДАС РУУ ШИДСЭНГҮЙ"
+            exit 1
+          }
+
+          echo "--- 30. ӨС дээр админ болгоод /admin нээгдэх ---"
+          docker compose exec -T db psql -U goal -d goal_app -c \
+            "UPDATE tb_users SET role = 'admin' WHERE email = 'escalate@example.com';"
+          code=$(curl -s -o admin.html -w "%{http_code}" -b web-jar.txt $WEB/admin)
+          echo "HTTP $code"
+          [ "$code" = "200" ] || { echo "АДМИН Ч ОРОХГҮЙ БАЙНА: $code"; exit 1; }
+          grep -q "$MARKER" admin.html || { echo "админы агуулга алга"; exit 1; }
+          grep -o 'name="robots" content="[^"]*"' admin.html | head -1
+          grep -q 'content="noindex' admin.html || { echo "noindex алга"; exit 1; }
 
           echo "БҮГД АМЖИЛТТАЙ"
 

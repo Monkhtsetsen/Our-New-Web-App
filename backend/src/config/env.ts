@@ -35,6 +35,25 @@ function required(name: string, hint: string): string {
   return value.trim();
 }
 
+/**
+ * "true"/"false" гэсэн мөрийг унших.
+ *
+ * Орчны хувьсагч үргэлж мөр байдаг тул `Boolean("false")` нь `true`
+ * болдог сонгодог алдаанаас сэргийлж тодорхой шалгана.
+ */
+function optionalBoolean(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === "") return fallback;
+
+  const value = raw.trim().toLowerCase();
+  if (value === "true" || value === "1") return true;
+  if (value === "false" || value === "0") return false;
+
+  throw new Error(
+    `Орчны хувьсагч "${name}" нь true эсвэл false байх ёстой. Одоо: "${raw}"`,
+  );
+}
+
 function optionalNumber(name: string, fallback: number): number {
   const raw = process.env[name];
   if (raw === undefined || raw.trim() === "") return fallback;
@@ -82,8 +101,14 @@ export function loadEnv(): Env {
       .map((o) => o.trim())
       .filter((o) => o.length > 0),
     jwtSecret,
-    // Production дээр HTTPS байх ёстой гэж үзнэ. Локал дээр HTTPS
-    // байхгүй тул `secure` cookie огт очихгүй — нэвтрэх боломжгүй болно.
-    cookieSecure: nodeEnv === "production",
+    /**
+     * Анхны утга нь NODE_ENV-ээс. Гэхдээ дарж бичиж болно — энэ нь
+     * ЗААВАЛ хэрэгтэй: docker compose дээр NODE_ENV=production атлаа
+     * http://localhost ажилладаг. `secure` cookie нь HTTPS-ээр л явдаг
+     * тул дарж бичихгүй бол локал дээр нэвтрэх БОЛОМЖГҮЙ болно.
+     *
+     * Жинхэнэ сервер дээр үүнийг хэзээ ч false болгож болохгүй.
+     */
+    cookieSecure: optionalBoolean("COOKIE_SECURE", nodeEnv === "production"),
   };
 }
