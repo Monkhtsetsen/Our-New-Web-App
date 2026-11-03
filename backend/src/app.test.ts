@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "./app.js";
+import { signToken } from "./auth/token.js";
 
-const app = createApp({ corsOrigins: ["http://localhost:3000"] });
+/** Тестэд зориулсан түлхүүр. Жинхэнэ нууц утга БИШ. */
+const TEST_SECRET = "test-only-secret-at-least-32-characters-long";
+
+const app = createApp({
+  corsOrigins: ["http://localhost:3000"],
+  jwtSecret: TEST_SECRET,
+  cookieSecure: false,
+});
 
 describe("GET /health", () => {
   // ӨС-гүйгээр ажиллах ёстой. Энэ тест яг түүнийг баталгаажуулна:
@@ -136,5 +144,77 @@ describe("POST /api/auth/signup — шалгалт", () => {
       .send({ ...VALID, name: "" });
 
     expect(JSON.stringify(res.body)).not.toContain(VALID.password);
+  });
+});
+
+describe("Хамгаалалттай зам — /api/users/me", () => {
+  // Эдгээр нь бүгд ӨС рүү хүрэхээс ӨМНӨ таслагддаг: cookie байхгүй,
+  // эсвэл token нь гарын үсгийн шалгалтаас унана.
+
+  it("cookie-гүй бол 401", async () => {
+    const res = await request(app).get("/api/users/me");
+
+    expect(res.status).toBe(401);
+  });
+
+  it("хог cookie-той бол 401", async () => {
+    const res = await request(app)
+      .get("/api/users/me")
+      .set("Cookie", "goal_session=this-is-not-a-token");
+
+    expect(res.status).toBe(401);
+  });
+
+  // Өөр түлхүүрээр гаргасан token нь гарын үсгийн шалгалтаас унана.
+  // Энэ нь "өөрөө token зохиож админ болох" оролдлогыг барина.
+  it("өөр түлхүүрээр зохиосон token-ыг хүлээж авахгүй", async () => {
+    const forged = signToken(
+      { sub: "11111111-2222-3333-4444-555555555555", role: "admin", tv: 0 },
+      "attacker-own-secret-at-least-32-characters",
+    );
+
+    const res = await request(app)
+      .get("/api/users/me")
+      .set("Cookie", `goal_session=${forged}`);
+
+    expect(res.status).toBe(401);
+  });
+
+  it("засах хүсэлт ч нэвтрэхийг шаардана", async () => {
+    const res = await request(app).put("/api/users/me").send({ name: "Шинэ" });
+
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("POST /api/auth/login — шалгалт", () => {
+  it("хоосон бие илгээвэл 400", async () => {
+    const res = await request(app).post("/api/auth/login").send({});
+
+    expect(res.status).toBe(400);
+    expect(Object.keys(res.body.errors).sort()).toEqual(["contact", "password"]);
+  });
+
+  it("буруу хэлбэрийн хаягт 400", async () => {
+    const res = await request(app)
+      .post("/api/auth/login")
+      .send({ contact: "зүгээр нэг мөр", password: "nuuts-ug-2026" });
+
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /api/auth/logout", () => {
+  it("нэвтрээгүй байсан ч 204 буцаана", async () => {
+    const res = await request(app).post("/api/auth/logout");
+
+    expect(res.status).toBe(204);
+  });
+
+  it("cookie-г устгах заавар илгээнэ", async () => {
+    const res = await request(app).post("/api/auth/logout");
+    const cookies = res.headers["set-cookie"] ?? [];
+
+    expect(String(cookies)).toContain("goal_session=;");
   });
 });

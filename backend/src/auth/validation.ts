@@ -156,3 +156,157 @@ export function validateSignup(input: SignupInput): ValidationErrors {
 
   return errors;
 }
+
+export type LoginInput = {
+  /** И-мэйл эсвэл утасны дугаар. */
+  contact: string;
+  password: string;
+};
+
+export type LoginErrors = Partial<Record<keyof LoginInput, string>>;
+
+/**
+ * Нэвтрэх оролтыг шалгана.
+ *
+ * Бүртгэлээс ЯЛГААТАЙ нь: нууц үгийн урт, нарийн дүрмийг энд шалгахгүй.
+ * Шалгах ёстой цорын ганц зүйл нь "хадгалсантай таарч байна уу" гэдэг.
+ * Хэрэв "нууц үг 8 тэмдэгтээс богино байна" гэж хэлбэл хуучин дүрмээр
+ * үүссэн бүртгэлийн эзэд нэвтэрч чадахгүй болно.
+ */
+export function validateLogin(input: LoginInput): LoginErrors {
+  const errors: LoginErrors = {};
+
+  const contact = (input.contact ?? "").trim();
+  if (contact.length === 0) {
+    errors.contact = "И-мэйл эсвэл утасны дугаараа оруулна уу";
+  } else if (parseContact(contact) === null) {
+    errors.contact = "И-мэйл хаяг эсвэл утасны дугаар буруу байна";
+  }
+
+  if ((input.password ?? "").length === 0) {
+    errors.password = "Нууц үгээ оруулна уу";
+  }
+
+  return errors;
+}
+
+/** Профайл засах үед хэрэглэгчийн илгээж болох талбарууд. */
+export type ProfileFields = "name" | "email" | "phone" | "newPassword";
+
+export type ProfileErrors = Partial<
+  Record<ProfileFields | "currentPassword", string>
+>;
+
+/** Цэгцэлсэн, ӨС рүү бичихэд бэлэн өөрчлөлтүүд. */
+export type ProfileChanges = {
+  name?: string;
+  /** `null` нь "хаягийг нь устга" гэсэн үг. */
+  email?: string | null;
+  phone?: string | null;
+  newPassword?: string;
+};
+
+/** Одоогийн төлөв — "хоёулаа хоосон үлдэх үү" гэдгийг шалгахад хэрэгтэй. */
+export type CurrentContact = {
+  email: string | null;
+  phone: string | null;
+};
+
+/**
+ * Профайлын өөрчлөлтийг шалгаж, цэгцэлнэ.
+ *
+ * Илгээгээгүй талбарыг хөнддөггүй — `{ name: "..." }` гэж илгээвэл
+ * зөвхөн нэр солигдоно. И-мэйл, утсыг хоосон мөрөөр илгээвэл "устга"
+ * гэж ойлгоно.
+ *
+ * `role`, `level`, `xp`, `streak`-ийг ЭНД ОГТ АВАХГҮЙ. Хэрэглэгч
+ * өөрийгөө админ болгох, эсвэл оноогоо өөрөө нэмэх ёсгүй.
+ */
+export function validateProfile(
+  input: Record<string, unknown>,
+  current: CurrentContact,
+): { errors: ProfileErrors; changes: ProfileChanges } {
+  const errors: ProfileErrors = {};
+  const changes: ProfileChanges = {};
+
+  if (input.name !== undefined) {
+    const name = typeof input.name === "string" ? input.name.trim() : "";
+    if (name.length === 0) {
+      errors.name = "Нэрээ оруулна уу";
+    } else if (name.length > NAME_MAX_LENGTH) {
+      errors.name = `Нэр ${NAME_MAX_LENGTH} тэмдэгтээс урт байж болохгүй`;
+    } else {
+      changes.name = name;
+    }
+  }
+
+  if (input.email !== undefined) {
+    const raw = typeof input.email === "string" ? input.email.trim() : "";
+    if (raw.length === 0) {
+      changes.email = null;
+    } else {
+      const parsed = parseContact(raw);
+      if (parsed === null || parsed.kind !== "email") {
+        errors.email = "И-мэйл хаяг буруу байна";
+      } else {
+        changes.email = parsed.value;
+      }
+    }
+  }
+
+  if (input.phone !== undefined) {
+    const raw = typeof input.phone === "string" ? input.phone.trim() : "";
+    if (raw.length === 0) {
+      changes.phone = null;
+    } else {
+      const parsed = parseContact(raw);
+      if (parsed === null || parsed.kind !== "phone") {
+        errors.phone = "Утасны дугаар буруу байна";
+      } else {
+        changes.phone = parsed.value;
+      }
+    }
+  }
+
+  // ӨС дээрх CHECK хязгаарлалттай ижил дүрэм. Энд барихгүй бол хүсэлт
+  // ӨС хүртэл очоод 500 алдаа болж буцна — хэрэглэгчид утгагүй хариу.
+  const nextEmail = changes.email !== undefined ? changes.email : current.email;
+  const nextPhone = changes.phone !== undefined ? changes.phone : current.phone;
+  if (nextEmail === null && nextPhone === null) {
+    const message = "И-мэйл, утасны дугаарын аль нэг нь заавал үлдэх ёстой";
+    if (changes.email === null) errors.email = message;
+    if (changes.phone === null) errors.phone = message;
+  }
+
+  if (input.newPassword !== undefined) {
+    const next =
+      typeof input.newPassword === "string" ? input.newPassword : "";
+    if (next.length === 0) {
+      errors.newPassword = "Шинэ нууц үгээ оруулна уу";
+    } else if (next.length < PASSWORD_MIN_LENGTH) {
+      errors.newPassword = `Нууц үг дор хаяж ${PASSWORD_MIN_LENGTH} тэмдэгт байх ёстой`;
+    } else if (next.length > PASSWORD_MAX_LENGTH) {
+      errors.newPassword = `Нууц үг ${PASSWORD_MAX_LENGTH} тэмдэгтээс урт байж болохгүй`;
+    } else {
+      changes.newPassword = next;
+    }
+  }
+
+  return { errors, changes };
+}
+
+/**
+ * Энэ өөрчлөлт одоогийн нууц үгээр баталгаажуулахыг шаардаж байна уу.
+ *
+ * Нэр солиход шаардахгүй — хэрэглэгчийг дэмий ядраана. Харин нууц үг,
+ * холбоо барих хаягийг солиход ЗААВАЛ шаардана: эдгээр нь бүртгэлийг
+ * булаан авах гол хоёр зам (хаягийг өөр рүүгээ сольчихоод "нууц үгээ
+ * мартсан" гэж сэргээх).
+ */
+export function needsCurrentPassword(changes: ProfileChanges): boolean {
+  return (
+    changes.email !== undefined ||
+    changes.phone !== undefined ||
+    changes.newPassword !== undefined
+  );
+}

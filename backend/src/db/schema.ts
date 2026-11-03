@@ -53,6 +53,9 @@ export const coachStyleEnum = pgEnum("coach_style", ["hard", "low"]);
  */
 export const userRoleEnum = pgEnum("user_role", ["admin", "user"]);
 
+/** `tb_users.role`-ийн боломжит утгууд: "admin" | "user". */
+export type UserRole = (typeof userRoleEnum.enumValues)[number];
+
 /**
  * Баганын анхны утгууд.
  *
@@ -64,6 +67,20 @@ export const DEFAULT_USER_LEVEL = 1;
 export const DEFAULT_USER_XP = 0;
 export const DEFAULT_USER_STREAK = 0;
 export const USER_ROLE_DEFAULT = "user" as const;
+
+/**
+ * Сесс хүчингүй болгох тоолуур.
+ *
+ * JWT нь төлөвгүй (stateless) — нэг удаа гаргасны дараа серверт
+ * "болиулах" бүртгэл үлддэггүй тул хугацаа нь дуустал хүчинтэй хэвээр
+ * байна. Нууц үгээ хулгайлуулсан хүн нууц үгээ сольсон ч хулгайчийн
+ * гар дээрх хуучин token ажилласаар байх нь ноцтой нүх.
+ *
+ * Шийдэл: энэ тоог token дотор хийж, хүсэлт бүр дээр ӨС дэх утгатай
+ * тулгана. Нууц үг солигдоход тоог нэмэгдүүлнэ — өмнөх бүх token
+ * тэр агшинд хүчингүй болно.
+ */
+export const DEFAULT_TOKEN_VERSION = 0;
 
 /**
  * Хэрэглэгч.
@@ -85,6 +102,9 @@ export const users = pgTable(
     phone: text("phone").unique(),
     passwordHash: text("password_hash").notNull(),
     role: userRoleEnum("role").default(USER_ROLE_DEFAULT).notNull(),
+    tokenVersion: integer("token_version")
+      .default(DEFAULT_TOKEN_VERSION)
+      .notNull(),
     level: integer("level").default(DEFAULT_USER_LEVEL).notNull(),
     xp: integer("xp").default(DEFAULT_USER_XP).notNull(),
     streak: integer("streak").default(DEFAULT_USER_STREAK).notNull(),

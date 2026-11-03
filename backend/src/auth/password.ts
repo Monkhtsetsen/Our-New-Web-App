@@ -151,3 +151,27 @@ export async function verifyPassword(
 
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
+
+/**
+ * Жинхэнэ hash шиг харагдах, хэнд ч хамаарахгүй мөр үүсгэнэ.
+ *
+ * Хэрэггүй мэт санагдаж болох ч чухал: нэвтрэх үед "ийм хэрэглэгч алга"
+ * гэж шууд буцаавал хариу 1 миллисекундэд ирнэ, харин нууц үг буруу бол
+ * scrypt ажиллаад ~300мс болно. Халдагч энэ ялгааг хэмжээд ямар хаяг
+ * бүртгэлтэй байгааг жагсааж чадна.
+ *
+ * Тиймээс хэрэглэгч олдоогүй үед ч энэ мөрийн эсрэг `verifyPassword`
+ * ажиллуулна — хариу өгөх хугацаа ижил болно.
+ *
+ * Санамсаргүй байт тул ямар ч нууц үг үүнтэй таарахгүй.
+ */
+export function createDummyHash(): string {
+  return [
+    ALGORITHM,
+    PARAMS.N,
+    PARAMS.r,
+    PARAMS.p,
+    randomBytes(SALT_LENGTH).toString("base64"),
+    randomBytes(KEY_LENGTH).toString("base64"),
+  ].join(SEPARATOR);
+}

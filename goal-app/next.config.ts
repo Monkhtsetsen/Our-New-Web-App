@@ -10,6 +10,17 @@ const nextConfig: NextConfig = {
   // Локал хөгжүүлэлтэд (npm run dev) ямар ч нөлөөгүй.
   output: "standalone",
 
+  /**
+   * Хуучин хаягийг шинэ рүү чиглүүлнэ.
+   *
+   * Бүртгүүлэх хуудсыг эхлээд /signup гэж нэрлэсэн бөгөөд одоо багийн
+   * тохиролцоо /register болов. Хуучин холбоосыг зүгээр орхивол 404
+   * болох тул 308-аар шилжүүлнэ (хайлтын систем бас шинэчилнэ).
+   */
+  async redirects() {
+    return [{ source: "/signup", destination: "/register", permanent: true }];
+  },
+
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

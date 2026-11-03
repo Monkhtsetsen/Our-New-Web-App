@@ -16,7 +16,21 @@ function main(): void {
     process.exit(1);
   }
 
-  const app = createApp({ corsOrigins: env.corsOrigins });
+  const app = createApp({
+    corsOrigins: env.corsOrigins,
+    jwtSecret: env.jwtSecret,
+    cookieSecure: env.cookieSecure,
+  });
+
+  // Reverse proxy (nginx, Kubernetes ingress) ард ажиллавал бүх хүсэлт
+  // proxy-гийн IP-тэй ирнэ. Тэгвэл хүсэлтийн хязгаарлагч бүх хүнийг нэг
+  // гэж тоолох тул X-Forwarded-For толгойг итгэж уншина.
+  //
+  // Анхаар: энэ толгойг хэн ч хуурамчаар бичиж болно. Зөвхөн ӨӨРИЙН
+  // итгэдэг proxy ард байх үед л асаана — иймээс нэг л алхам ("1").
+  if (env.nodeEnv === "production") {
+    app.set("trust proxy", 1);
+  }
 
   // 0.0.0.0 заавал. Анхны утга нь зөвхөн localhost бөгөөд тэр тохиолдолд
   // контейнерийн дотроос л хандах боломжтой болно.

@@ -45,6 +45,21 @@ services:
       # Хөтөч frontend-ээс хандах тул түүний хаягийг зөвшөөрнө.
       CORS_ORIGINS: http://localhost:3000
       NODE_ENV: production
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # ЗӨВХӨН ЛОКАЛ ХӨГЖҮҮЛЭЛТЭД ЗОРИУЛСАН УТГУУД.
+      #
+      # Жинхэнэ сервер дээр эдгээрийг энд бичихгүй — нууц хадгалах
+      # үйлчилгээнээс (GitHub Secrets, Kubernetes Secret, Supabase
+      # тохиргоо) өгнө. Энэ файл нь git дотор байдаг тул энд бичсэн
+      # утга нийтэд ил болно.
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      JWT_SECRET: local-development-only-not-a-real-secret-0123456789
+
+      # NODE_ENV=production атлаа энд false байгаа нь санаатай:
+      # локал дээр http://localhost ажилладаг бөгөөд `secure` cookie
+      # нь зөвхөн HTTPS-ээр явдаг. True орхивол нэвтрэх боломжгүй.
+      COOKIE_SECURE: "false"
     depends_on:
       db:
         condition: service_healthy
@@ -61,6 +76,12 @@ services:
     container_name: goal-app-frontend
     ports:
       - "3000:3000"
+    environment:
+      # Next.js-ийн СЕРВЕР талаас backend руу хандах хаяг. Дээрх
+      # NEXT_PUBLIC_API_URL-аас ЯЛГААТАЙ: тэр нь хөтчөөс, энэ нь
+      # контейнер дотроос хандана. NEXT_PUBLIC_ угтваргүй тул
+      # хөтөч рүү дамжихгүй.
+      BACKEND_INTERNAL_URL: http://backend:4000
     depends_on:
       - backend
     restart: unless-stopped

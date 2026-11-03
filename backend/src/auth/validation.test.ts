@@ -3,7 +3,10 @@ import {
   PASSWORD_MIN_LENGTH,
   normalizeEmail,
   normalizePhone,
+  needsCurrentPassword,
   parseContact,
+  validateLogin,
+  validateProfile,
   validateSignup,
 } from "./validation.js";
 
@@ -216,5 +219,126 @@ describe("Олон алдаа зэрэг", () => {
     });
 
     expect(Object.keys(errors).sort()).toEqual(["contact", "name", "password"]);
+  });
+});
+
+describe("validateLogin", () => {
+  it("зөв оролтод алдаа гаргахгүй", () => {
+    expect(
+      validateLogin({ contact: "erka@example.com", password: "ямар ч байж болно" }),
+    ).toEqual({});
+  });
+
+  it("хоосон хаягийг барина", () => {
+    const errors = validateLogin({ contact: "", password: "nuuts-ug" });
+
+    expect(errors.contact).toBeDefined();
+  });
+
+  it("хоосон нууц үгийг барина", () => {
+    const errors = validateLogin({ contact: "erka@example.com", password: "" });
+
+    expect(errors.password).toBeDefined();
+  });
+
+  /**
+   * Нэвтрэх үед нууц үгийн УРТЫГ шалгаж болохгүй. Шалгавал хуучин
+   * дүрмээр (эсвэл өөр системээс зөөгдөж) үүссэн богино нууц үгтэй
+   * хүмүүс бүртгэлдээ орох аргагүй болно.
+   */
+  it("богино нууц үгийг нэвтрэх үед татгалзахгүй", () => {
+    const errors = validateLogin({ contact: "erka@example.com", password: "123" });
+
+    expect(errors.password).toBeUndefined();
+  });
+});
+
+describe("validateProfile", () => {
+  const HAS_EMAIL = { email: "erka@example.com", phone: null };
+  const HAS_PHONE = { email: null, phone: "+97699112233" };
+
+  it("илгээгээгүй талбарыг хөндөхгүй", () => {
+    const { errors, changes } = validateProfile({ name: "Шинэ нэр" }, HAS_EMAIL);
+
+    expect(errors).toEqual({});
+    expect(changes).toEqual({ name: "Шинэ нэр" });
+  });
+
+  it("утасны дугаарыг E.164 болгоно", () => {
+    const { changes } = validateProfile({ phone: "9911-2233" }, HAS_EMAIL);
+
+    expect(changes.phone).toBe("+97699112233");
+  });
+
+  it("и-мэйлийг жижиг үсэг болгоно", () => {
+    const { changes } = validateProfile({ email: "  ERKA@Example.COM " }, HAS_PHONE);
+
+    expect(changes.email).toBe("erka@example.com");
+  });
+
+  it("хоосон мөр нь устгах гэсэн үг", () => {
+    const { errors, changes } = validateProfile({ phone: "" }, {
+      email: "erka@example.com",
+      phone: "+97699112233",
+    });
+
+    expect(errors).toEqual({});
+    expect(changes.phone).toBeNull();
+  });
+
+  // ӨС дээрх CHECK хязгаарлалттай ижил дүрэм. Хоёулаа хоосон бол
+  // бүртгэл рүү дахин хандах арга үлдэхгүй.
+  it("сүүлчийн холбоо барих хаягийг устгахыг зөвшөөрөхгүй", () => {
+    const { errors } = validateProfile({ email: "" }, HAS_EMAIL);
+
+    expect(errors.email).toBeDefined();
+  });
+
+  it("и-мэйлийн талбарт утас бичихийг зөвшөөрөхгүй", () => {
+    const { errors } = validateProfile({ email: "99112233" }, HAS_PHONE);
+
+    expect(errors.email).toBeDefined();
+  });
+
+  it("богино шинэ нууц үгийг барина", () => {
+    const { errors } = validateProfile({ newPassword: "123" }, HAS_EMAIL);
+
+    expect(errors.newPassword).toContain("дор хаяж 8");
+  });
+
+  /**
+   * ХАМГИЙН ЧУХАЛ ТЕСТ.
+   *
+   * Хэрэглэгч { "role": "admin" } гэж илгээвэл түүнийг БҮРЭН үл
+   * тоомсорлох ёстой. Мөн level, xp, streak зэрэг оноог өөрөө
+   * нэмэх ёсгүй.
+   */
+  it("role, level, xp, streak-ийг хүсэлтээс авахгүй", () => {
+    const { errors, changes } = validateProfile(
+      { name: "Заль", role: "admin", level: 99, xp: 100000, streak: 365, id: "өөр-id" },
+      HAS_EMAIL,
+    );
+
+    expect(errors).toEqual({});
+    expect(changes).toEqual({ name: "Заль" });
+  });
+});
+
+describe("needsCurrentPassword", () => {
+  it("зөвхөн нэр солиход шаардахгүй", () => {
+    expect(needsCurrentPassword({ name: "Шинэ нэр" })).toBe(false);
+  });
+
+  it("хоосон өөрчлөлтөд шаардахгүй", () => {
+    expect(needsCurrentPassword({})).toBe(false);
+  });
+
+  // Хаягийг солиод "нууц үгээ мартсан" гэж сэргээх нь бүртгэл булаах
+  // сонгодог зам. Тиймээс эдгээрт заавал баталгаажуулна.
+  it("и-мэйл, утас, нууц үг солиход шаардана", () => {
+    expect(needsCurrentPassword({ email: "shine@example.com" })).toBe(true);
+    expect(needsCurrentPassword({ phone: "+97699112233" })).toBe(true);
+    expect(needsCurrentPassword({ phone: null })).toBe(true);
+    expect(needsCurrentPassword({ newPassword: "shine-nuuts-ug" })).toBe(true);
   });
 });
