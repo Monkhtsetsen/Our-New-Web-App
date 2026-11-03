@@ -64,7 +64,7 @@ export function createGoalsRouter(config: AuthConfig): Router {
   /**
    * POST /api/goals
    *
-   * Хүлээн авах:  { title, description? }
+   * Хүлээн авах:  { title, description?, deadline? }
    *
    * Буцаах:
    *   201  { goal: {...} }
@@ -100,6 +100,7 @@ export function createGoalsRouter(config: AuthConfig): Router {
           userId: user.id,
           title: goal.title,
           description: goal.description,
+          deadline: goal.deadline,
         })
         .returning(PUBLIC_GOAL_COLUMNS);
 
