@@ -6,12 +6,18 @@
  * шууд, ойлгомжтой алдаа өгөөд зогсоно.
  */
 
+import { JWT_SECRET_MIN_LENGTH } from "../auth/token.js";
+
 export type Env = {
   nodeEnv: "development" | "production" | "test";
   port: number;
   databaseUrl: string;
   /** Хөтчөөс хандахыг зөвшөөрөх эх үүсвэрүүд (frontend-ийн хаяг). */
   corsOrigins: string[];
+  /** Сессийн token-д гарын үсэг зурах нууц түлхүүр. */
+  jwtSecret: string;
+  /** Cookie-г зөвхөн HTTPS-ээр явуулах эсэх. */
+  cookieSecure: boolean;
 };
 
 class MissingEnvError extends Error {
@@ -49,6 +55,20 @@ function optionalNumber(name: string, fallback: number): number {
 export function loadEnv(): Env {
   const nodeEnv = (process.env.NODE_ENV ?? "development") as Env["nodeEnv"];
 
+  const jwtSecret = required(
+    "JWT_SECRET",
+    "Урт санамсаргүй мөр үүсгэнэ үү: " +
+      "node -e \"console.log(crypto.randomBytes(48).toString('base64url'))\"",
+  );
+
+  // Богино түлхүүрийг таах боломжтой. Анхны утга ӨГӨХГҮЙ — кодод бичсэн
+  // "default secret" нь нийтэд ил болохоор нь хамгаалалт байхаа болино.
+  if (jwtSecret.length < JWT_SECRET_MIN_LENGTH) {
+    throw new Error(
+      `Орчны хувьсагч "JWT_SECRET" нь дор хаяж ${JWT_SECRET_MIN_LENGTH} тэмдэгт байх ёстой.`,
+    );
+  }
+
   return {
     nodeEnv,
     port: optionalNumber("PORT", 4000),
@@ -61,5 +81,9 @@ export function loadEnv(): Env {
       .split(",")
       .map((o) => o.trim())
       .filter((o) => o.length > 0),
+    jwtSecret,
+    // Production дээр HTTPS байх ёстой гэж үзнэ. Локал дээр HTTPS
+    // байхгүй тул `secure` cookie огт очихгүй — нэвтрэх боломжгүй болно.
+    cookieSecure: nodeEnv === "production",
   };
 }
