@@ -374,6 +374,24 @@ jobs:
           grep -o 'name="robots" content="[^"]*"' admin.html | head -1
           grep -q 'content="noindex' admin.html || { echo "noindex алга"; exit 1; }
 
+          echo "--- 31. Нэвтрээгүй бол /dashboard → нэвтрэх хуудас руу ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" $WEB/dashboard)
+          [ "$code" = "307" ] || { echo "ХҮЛЭЭСЭН 307, ИРСЭН $code"; exit 1; }
+
+          echo "--- 32. Нэвтэрсэн бол /dashboard нээгдэнэ ---"
+          code=$(curl -s -o dash.html -w "%{http_code}" -b web-jar.txt $WEB/dashboard)
+          echo "HTTP $code"
+          [ "$code" = "200" ] || { echo "ХҮЛЭЭСЭН 200, ИРСЭН $code"; exit 1; }
+          grep -q "Түвшин" dash.html || { echo "самбарын агуулга алга"; exit 1; }
+
+          # Энэ хуудсан дээр урьд нь зохиосон тоонууд бичигдсэн байсан.
+          # Дахин орж ирэхээс сэргийлж барьж байна.
+          echo "--- 33. Самбар дээр зохиосон тоо байхгүй ---"
+          for fake in "Total projects" "Last activity"; do
+            grep -q "$fake" dash.html && { echo "ЗОХИОСОН ӨГӨГДӨЛ: $fake"; exit 1; }
+          done
+          echo "зохиосон тоо олдсонгүй"
+
           echo "БҮГД АМЖИЛТТАЙ"
 
       - name: Сервисүүдийн лог

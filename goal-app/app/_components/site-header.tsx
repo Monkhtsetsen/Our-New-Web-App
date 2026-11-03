@@ -52,6 +52,10 @@ async function SessionLinks() {
 
   return (
     <>
+      <Link href="/dashboard" className={LINK_CLASS}>
+        Самбар
+      </Link>
+
       {/*
         Админ холбоосыг зөвхөн админд харуулна. Энэ нь ТОХЬ болохоос
         хамгаалалт биш — хаягийг нь шууд бичсэн хүнийг /admin хуудас
