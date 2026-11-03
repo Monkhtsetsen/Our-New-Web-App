@@ -30,7 +30,7 @@ export const metadata: Metadata = {
  */
 export default function DashboardPage() {
   return (
-    <div className="flex flex-1 justify-center bg-zinc-50 px-6 py-16 dark:bg-black">
+    <div className="flex flex-1 justify-center px-6 py-16">
       <div className="w-full max-w-2xl">
         <Suspense fallback={<DashboardSkeleton />}>
           <DashboardContent />
@@ -49,10 +49,10 @@ async function DashboardContent() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
         Сайн байна уу, {user.name}
       </h1>
-      <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+      <p className="mt-2 text-sm leading-6 text-muted">
         Өнөөдрийн байдал.
       </p>
 
@@ -73,22 +73,25 @@ async function DashboardContent() {
  */
 function Stats({ user }: { user: User }) {
   const items = [
-    { label: "Түвшин", value: String(user.level), hint: "Даалгавар гүйцэтгэх тусам өснө" },
-    { label: "Оноо", value: String(user.xp), hint: "Нийт цуглуулсан оноо" },
-    { label: "Тасралтгүй", value: `${user.streak} хоног`, hint: "Дараалан идэвхтэй байсан хоног" },
+    { label: "Түвшин", value: user.level, unit: null, hint: "Даалгавар гүйцэтгэх тусам өснө" },
+    { label: "Оноо", value: user.xp, unit: null, hint: "Нийт цуглуулсан оноо" },
+    { label: "Тасралтгүй", value: user.streak, unit: "хоног", hint: "Дараалан идэвхтэй байсан хоног" },
   ];
 
   return (
-    <dl className="mt-8 grid gap-px overflow-hidden rounded-md border border-zinc-200 bg-zinc-200 sm:grid-cols-3 dark:border-zinc-800 dark:bg-zinc-800">
+    <dl className="mt-8 grid gap-3 sm:grid-cols-3">
       {items.map((item) => (
-        <div key={item.label} className="bg-white px-4 py-4 dark:bg-black">
-          <dt className="text-xs text-zinc-500 dark:text-zinc-500">
-            {item.label}
-          </dt>
-          <dd className="mt-1 text-2xl font-semibold text-zinc-950 dark:text-zinc-50">
+        <div key={item.label} className="rounded-lg border border-line bg-surface px-4 py-4">
+          <dt className="text-xs font-medium text-muted">{item.label}</dt>
+          <dd className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
             {item.value}
+            {item.unit !== null && (
+              <span className="ml-1 text-sm font-normal text-muted">
+                {item.unit}
+              </span>
+            )}
           </dd>
-          <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-500">
+          <p className="mt-1 text-xs leading-5 text-muted">
             {item.hint}
           </p>
         </div>
@@ -106,18 +109,18 @@ function Stats({ user }: { user: User }) {
  */
 function NextSteps() {
   return (
-    <div className="mt-8 rounded-md border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
-      <h2 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+    <div className="mt-8 rounded-md border border-line bg-surface p-5">
+      <h2 className="text-sm font-medium text-foreground">
         Зорилго, даалгавар
       </h2>
-      <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+      <p className="mt-2 text-sm leading-6 text-muted">
         Хүснэгтүүд нь өгөгдлийн санд бэлэн боловч эдгээрийг унших,
         бичих API хараахан нэмэгдээгүй байна. Нэмэгдмэгц энэ хэсэгт
         зорилгын жагсаалт, өнөөдрийн даалгаврууд гарч ирнэ.
       </p>
       <Link
         href="/profile"
-        className="mt-4 inline-flex h-9 items-center rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+        className="mt-4 inline-flex h-9 items-center rounded-md border border-control px-3 text-sm font-medium text-foreground transition-colors hover:bg-surface-2"
       >
         Профайл руу
       </Link>
@@ -129,9 +132,9 @@ function DashboardSkeleton() {
   return (
     <div className="space-y-5" aria-busy="true" aria-live="polite">
       <span className="sr-only">Ачаалж байна…</span>
-      <div className="h-9 w-64 animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-900" />
-      <div className="h-[104px] animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-900" />
-      <div className="h-[148px] animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-900" />
+      <div className="h-9 w-64 animate-pulse rounded-md bg-surface-2" />
+      <div className="h-[104px] animate-pulse rounded-md bg-surface-2" />
+      <div className="h-[148px] animate-pulse rounded-md bg-surface-2" />
     </div>
   );
 }

@@ -26,12 +26,12 @@ export const metadata: Metadata = {
  */
 export default function ProfilePage() {
   return (
-    <div className="flex flex-1 justify-center bg-zinc-50 px-6 py-16 dark:bg-black">
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
+    <div className="flex flex-1 justify-center px-6 py-16">
+      <div className="w-full max-w-lg">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Профайл
         </h1>
-        <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+        <p className="mt-2 text-sm leading-6 text-muted">
           Бүртгэлийн мэдээллээ эндээс засна уу.
         </p>
 
@@ -56,15 +56,21 @@ async function ProfileLoader() {
 /** Мэдээлэл ирэх хүртэл байрыг нь эзэлж байх хоосон хүрээ. */
 function ProfileSkeleton() {
   return (
-    <div className="mt-8 space-y-5" aria-busy="true" aria-live="polite">
+    <div className="mt-8" aria-busy="true" aria-live="polite">
       <span className="sr-only">Ачаалж байна…</span>
-      <div className="h-[70px] animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-900" />
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="h-[66px] animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-900"
-        />
-      ))}
+
+      {/* Гурван тоо */}
+      <div className="grid grid-cols-3 gap-3">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="h-[74px] animate-pulse rounded-lg bg-surface-2"
+          />
+        ))}
+      </div>
+
+      {/* Формын карт */}
+      <div className="mt-6 h-[420px] animate-pulse rounded-lg bg-surface-2" />
     </div>
   );
 }

@@ -46,7 +46,7 @@ export const metadata: Metadata = {
  */
 export default function AdminPage() {
   return (
-    <div className="flex flex-1 items-center justify-center bg-zinc-50 px-6 py-16 dark:bg-black">
+    <div className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-xl">
         {/*
           Эрхийн шалгалт нь cookie уншихыг шаарддаг тул урьдчилан
@@ -62,7 +62,7 @@ export default function AdminPage() {
 
 function Checking() {
   return (
-    <p className="text-sm text-zinc-500 dark:text-zinc-500" aria-busy="true">
+    <p className="text-sm text-muted" aria-busy="true">
       Эрх шалгаж байна…
     </p>
   );
@@ -81,18 +81,18 @@ async function AdminGate() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
         Админ
       </h1>
-      <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+      <p className="mt-2 text-sm leading-6 text-muted">
         {user.name} — <code>admin</code> эрхтэй нэвтэрсэн.
       </p>
 
-      <div className="mt-8 rounded-md border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <div className="mt-8 rounded-md border border-line bg-surface p-4">
+        <p className="text-sm text-muted">
           Удирдлагын хэрэгслүүд хараахан нэмэгдээгүй байна. Нэмэх үед
           эрхийн шалгалтыг хуудас бүр дээр биш,{" "}
-          <strong className="font-medium text-zinc-900 dark:text-zinc-100">
+          <strong className="font-medium text-foreground">
             backend-ийн зам бүр дээр
           </strong>{" "}
           давтаж хийнэ — энэ хуудсыг тойрч API руу шууд хандах боломжтой

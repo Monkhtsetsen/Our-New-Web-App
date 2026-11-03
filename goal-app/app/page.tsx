@@ -11,15 +11,15 @@ import { getSessionUser } from "@/src/lib/api-server";
  */
 export default function Home() {
   return (
-    <div className="flex flex-1 items-center justify-center bg-zinc-50 px-6 py-24 dark:bg-black">
+    <div className="flex flex-1 items-center justify-center px-6 py-24">
       <div className="w-full max-w-2xl">
-        <h1 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-950 dark:text-zinc-50">
+        <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground">
           Зорилгоо тодорхойлж,
           <br />
           өдөр бүр ахи.
         </h1>
 
-        <p className="mt-5 max-w-lg text-base leading-7 text-zinc-600 dark:text-zinc-400">
+        <p className="mt-5 max-w-lg text-base leading-7 text-muted">
           Goal App нь томоохон зорилгыг өдөр тутмын жижиг даалгавар
           болгон хуваахад тусална. Гүйцэтгэх тусам оноо цуглуулж,
           тасралтгүй ажилласан хоногоо хөтөлнө.
@@ -50,13 +50,13 @@ async function Actions() {
         <>
           <Link
             href="/register"
-            className="flex h-11 items-center justify-center rounded-md bg-zinc-900 px-6 text-sm font-medium text-zinc-50 transition-colors hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="flex h-11 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-on-primary transition-colors hover:opacity-90"
           >
             Бүртгүүлэх
           </Link>
           <Link
             href="/login"
-            className="flex h-11 items-center justify-center rounded-md border border-zinc-300 px-6 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            className="flex h-11 items-center justify-center rounded-md border border-control px-6 text-sm font-medium text-foreground transition-colors hover:bg-surface-2"
           >
             Нэвтрэх
           </Link>
@@ -64,7 +64,7 @@ async function Actions() {
       ) : (
         <Link
           href="/dashboard"
-          className="flex h-11 items-center justify-center rounded-md bg-zinc-900 px-6 text-sm font-medium text-zinc-50 transition-colors hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="flex h-11 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-on-primary transition-colors hover:opacity-90"
         >
           Самбар руу
         </Link>
@@ -76,8 +76,8 @@ async function Actions() {
 function ActionsSkeleton() {
   return (
     <div className="mt-10 flex gap-3" aria-hidden="true">
-      <div className="h-11 w-36 animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-900" />
-      <div className="h-11 w-32 animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-900" />
+      <div className="h-11 w-36 animate-pulse rounded-md bg-surface-2" />
+      <div className="h-11 w-32 animate-pulse rounded-md bg-surface-2" />
     </div>
   );
 }
@@ -99,13 +99,13 @@ function Features() {
   ];
 
   return (
-    <dl className="mt-16 grid gap-8 border-t border-zinc-200 pt-10 sm:grid-cols-3 dark:border-zinc-800">
+    <dl className="mt-16 grid gap-8 border-t border-line pt-10 sm:grid-cols-3">
       {items.map((item) => (
         <div key={item.title}>
-          <dt className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+          <dt className="text-sm font-medium text-foreground">
             {item.title}
           </dt>
-          <dd className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+          <dd className="mt-2 text-sm leading-6 text-muted">
             {item.body}
           </dd>
         </div>
