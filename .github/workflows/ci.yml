@@ -8,11 +8,12 @@ on:
     branches: [main]
 
 jobs:
-  build-and-test:
-    name: Lint, тест, build
+  # ===================================================================
+  # Frontend — Next.js (goal-app/)
+  # ===================================================================
+  frontend:
+    name: Frontend — lint, тест, build
     runs-on: ubuntu-latest
-
-    # Апп нь репозиторийн үндэс дээр биш, goal-app/ дотор байгаа.
     defaults:
       run:
         working-directory: goal-app
@@ -34,21 +35,53 @@ jobs:
       - name: Lint шалгах
         run: npm run lint
 
-      - name: Нэгж тест ажиллуулах
+      - name: Нэгж тест
         run: npm test
 
       - name: Production build
         run: npm run build
 
   # ===================================================================
-  # Лаб 8 — Dockerfile-ыг жинхэнэ орчинд шалгана.
+  # Backend — Node + Express (backend/)
+  # ===================================================================
+  backend:
+    name: Backend — typecheck, тест, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Кодыг татах
+        uses: actions/checkout@v5
+
+      - name: Node.js тохируулах
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Хамаарал суулгах
+        run: npm ci
+
+      - name: Төрөл шалгах
+        run: npm run typecheck
+
+      - name: Нэгж тест
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  # ===================================================================
+  # Гурван сервисийг зэрэг асааж, бүтнээр нь шалгана.
   #
-  # Зөвхөн бичсэн Dockerfile нь ажиллана гэсэн баталгаа биш. Энд үнэхээр
-  # image бүтээж, контейнер асааж, хүсэлт илгээж хариу авна. Мөн layer
-  # caching ажиллаж буйг гаралтаар нь нотолно.
+  # Энэ ажил нь frontend, backend, ӨС гурав хамтдаа ажиллаж байгааг
+  # нотолно — нэгж тестээр барьж болдоггүй цорын ганц зүйл.
   # ===================================================================
   docker:
-    name: Docker image бүтээх ба ажиллуулах
+    name: Docker — гурван сервисийг бүтнээр нь шалгах
     runs-on: ubuntu-latest
 
     steps:
@@ -56,41 +89,105 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Docker хувилбар
-        run: docker --version
+        run: docker --version && docker compose version
 
-      - name: Image бүтээх (хүйтэн, кэшгүй)
+      - name: Image-үүдийг бүтээх
+        run: docker compose build 2>&1 | tee docker-build.log
+
+      - name: Сервисүүдийг асаах
+        run: docker compose up -d
+
+      - name: Backend бэлэн болохыг хүлээх
         run: |
-          docker build --progress=plain -t goal-app:1.0 goal-app 2>&1             | tee docker-build.log
-
-      - name: Image-ийн хэмжээ
-        run: docker image ls goal-app:1.0
-
-      - name: Контейнер ажиллуулах
-        run: docker run -d --name goal-app -p 3000:3000 goal-app:1.0
-
-      - name: Апп хариу өгч байгааг шалгах
-        run: |
-          for i in $(seq 1 30); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ || true)
-            if [ "$code" = "200" ]; then
-              echo "HTTP $code — апп хариу өгч байна"
-              exit 0
-            fi
-            sleep 2
+          for i in $(seq 1 40); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/health || true)
+            if [ "$code" = "200" ]; then echo "backend /health → HTTP 200"; exit 0; fi
+            sleep 3
           done
-          echo "Апп 60 секундын дотор хариу өгсөнгүй"
-          docker logs goal-app
-          exit 1
+          echo "Backend хариу өгсөнгүй"; docker compose logs backend; exit 1
 
-      - name: Контейнерийн лог
-        run: docker logs goal-app | tee docker-run.log
+      - name: Frontend бэлэн болохыг хүлээх
+        run: |
+          for i in $(seq 1 40); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/signup || true)
+            if [ "$code" = "200" ]; then echo "frontend /signup → HTTP 200"; exit 0; fi
+            sleep 3
+          done
+          echo "Frontend хариу өгсөнгүй"; docker compose logs frontend; exit 1
+
+      - name: Node.js тохируулах (миграц ажиллуулахад)
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      # drizzle-kit нь devDependency тул production image дотор байхгүй.
+      # Миграцыг runner дээрээс, нээлттэй 5432 портоор дамжуулж ажиллуулна.
+      - name: Схемийг ӨС рүү буулгах
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://goal:goal_local_dev@localhost:5432/goal_app
+        run: |
+          npm ci
+          npx drizzle-kit migrate
+
+      - name: ӨС рүү холбогдож чадаж байгааг шалгах
+        run: |
+          body=$(curl -s http://localhost:4000/health/ready)
+          echo "$body"
+          echo "$body" | grep -q '"database":"connected"'
+
+      - name: Бүртгүүлэх урсгалыг бүтнээр нь шалгах
+        run: |
+          echo "--- 1. Зөв хүсэлт → 201 хүлээнэ ---"
+          code=$(curl -s -o signup.json -w "%{http_code}" \
+            -X POST http://localhost:4000/api/auth/signup \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Туршилт","contact":"test@example.com","password":"nuuts-ug-2026"}')
+          cat signup.json; echo
+          [ "$code" = "201" ] || { echo "ХҮЛЭЭСЭН 201, ИРСЭН $code"; exit 1; }
+
+          echo "--- 2. Нууц үгийн hash хариуд гарч болохгүй ---"
+          grep -q "passwordHash" signup.json && { echo "hash задарлаа"; exit 1; }
+          grep -q "nuuts-ug-2026" signup.json && { echo "нууц үг задарлаа"; exit 1; }
+
+          echo "--- 3. Ижил и-мэйлээр дахин → 409 хүлээнэ ---"
+          code=$(curl -s -o dup.json -w "%{http_code}" \
+            -X POST http://localhost:4000/api/auth/signup \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Өөр хүн","contact":"TEST@example.com","password":"өөр-нууц-үг-2026"}')
+          cat dup.json; echo
+          [ "$code" = "409" ] || { echo "ХҮЛЭЭСЭН 409, ИРСЭН $code"; exit 1; }
+
+          echo "--- 4. Буруу оролт → 400 хүлээнэ ---"
+          code=$(curl -s -o bad.json -w "%{http_code}" \
+            -X POST http://localhost:4000/api/auth/signup \
+            -H "Content-Type: application/json" \
+            -d '{"name":"","contact":"abc","password":"123"}')
+          cat bad.json; echo
+          [ "$code" = "400" ] || { echo "ХҮЛЭЭСЭН 400, ИРСЭН $code"; exit 1; }
+
+          echo "--- 5. Утсаар бүртгэх → 201, дугаар E.164 болсон байх ---"
+          code=$(curl -s -o phone.json -w "%{http_code}" \
+            -X POST http://localhost:4000/api/auth/signup \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Утастай","contact":"9911-2233","password":"nuuts-ug-2026"}')
+          cat phone.json; echo
+          [ "$code" = "201" ] || { echo "ХҮЛЭЭСЭН 201, ИРСЭН $code"; exit 1; }
+          grep -q '"phone":"+97699112233"' phone.json || { echo "дугаар цэгцлэгдээгүй"; exit 1; }
+
+          echo "БҮГД АМЖИЛТТАЙ"
+
+      - name: Сервисүүдийн лог
+        if: always()
+        run: docker compose logs --no-color | tee docker-run.log
 
       - name: Layer caching — кодод жижиг өөрчлөлт оруулаад дахин build
         run: |
           echo "" >> goal-app/app/page.tsx
           echo "// layer caching-ийг шалгах зорилгоор нэмсэн мөр" >> goal-app/app/page.tsx
-          docker build --progress=plain -t goal-app:1.1 goal-app 2>&1             | tee docker-rebuild.log
-          echo "──────────────────────────────────────────────"
+          docker compose build frontend 2>&1 | tee docker-rebuild.log
           echo "Кэшнээс ирсэн алхам: $(grep -c 'CACHED' docker-rebuild.log || echo 0)"
 
       - name: Логуудыг хадгалах
@@ -105,4 +202,4 @@ jobs:
 
       - name: Цэвэрлэх
         if: always()
-        run: docker rm -f goal-app || true
+        run: docker compose down -v

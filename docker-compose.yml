@@ -1,15 +1,13 @@
-# Goal App — локал орчинд апп + өгөгдлийн санг зэрэг ажиллуулах.
+# Goal App — гурван сервисийг зэрэг ажиллуулна.
 #
 #   docker compose up --build
 #
-# Supabase нээгдэхээс өмнө бүртгүүлэх урсгалыг жинхэнэ PostgreSQL дээр
-# турших боломж олгоно. Схемийг ӨС рүү буулгахдаа:
+#   frontend   http://localhost:3000     Next.js
+#   backend    http://localhost:4000     Node + Express
+#   db         localhost:5432            PostgreSQL 17
 #
-#   docker compose exec app node_modules/.bin/drizzle-kit migrate
-#
-# эсвэл локалаасаа:
-#
-#   DATABASE_URL=postgresql://goal:goal_local_dev@localhost:5432/goal_app #     npm run db:migrate
+# Схемийг ӨС рүү буулгах (эхний удаа нэг л удаа):
+#   docker compose exec backend npx drizzle-kit migrate
 
 services:
   db:
@@ -26,28 +24,45 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      # Апп нь ӨС бэлэн болохоос өмнө асвал холболтын алдаа өгнө.
-      # Тиймээс "ажиллаж байна" биш "хүсэлт хүлээж авахад бэлэн" гэдгийг
-      # шалгана.
+      # "Процесс асав" биш "хүсэлт хүлээж авахад бэлэн" гэдгийг шалгана.
       test: ["CMD-SHELL", "pg_isready -U goal -d goal_app"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  app:
+  backend:
     build:
-      context: ./goal-app
-    container_name: goal-app
+      context: ./backend
+    container_name: goal-app-backend
     ports:
-      - "3000:3000"
+      - "4000:4000"
     environment:
       # Хост нь "localhost" биш "db". Контейнер бүр өөрийн сүлжээний
-      # орон зайтай тул localhost нь аппын өөрийнх нь контейнерийг
-      # заана. Compose нь сервисийн нэрийг DNS болгож өгдөг.
+      # орон зайтай тул localhost нь backend-ийн өөрийнх нь контейнерийг
+      # заана. Compose сервисийн нэрийг DNS болгож өгдөг.
       DATABASE_URL: postgresql://goal:goal_local_dev@db:5432/goal_app
+      PORT: "4000"
+      # Хөтөч frontend-ээс хандах тул түүний хаягийг зөвшөөрнө.
+      CORS_ORIGINS: http://localhost:3000
+      NODE_ENV: production
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./goal-app
+      args:
+        # ХӨТЧӨӨС харагдах хаяг. "http://backend:4000" гэж бичвэл
+        # ажиллахгүй — тэр нэр зөвхөн Docker-ийн сүлжээн дотор утгатай,
+        # хэрэглэгчийн хөтөч түүнийг олохгүй.
+        NEXT_PUBLIC_API_URL: http://localhost:4000
+    container_name: goal-app-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
     restart: unless-stopped
 
 volumes:
