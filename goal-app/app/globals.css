@@ -1,26 +1,141 @@
 @import "tailwindcss";
 
+/**
+ * Өнгө, зайн тогтмолууд.
+ *
+ * Утгыг нэг л газар тодорхойлж, гэрэл/харанхуй хоёрт ИЖИЛ НЭРЭЭР
+ * сольж өгнө. Ингэснээр компонент бүр дээр `dark:` хувилбар бичих
+ * шаардлагагүй — өнгөний шийдвэр энд, нэг файлд төвлөрнө.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  color-scheme: light;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --background: #fafafa; /* хуудасны дэвсгэр */
+  --surface: #ffffff; /* карт, оролтын талбар */
+  --surface-2: #f4f4f5; /* карт доторх товойсон хэсэг */
+
+  --foreground: #09090b; /* үндсэн текст */
+  --muted: #52525b; /* тайлбар, туслах текст */
+
+  /**
+   * Хоёр төрлийн зураас.
+   *
+   * `--border` нь зүгээр хуваагч — зөвхөн гоо сайхны үүрэгтэй.
+   * `--border-control` нь оролтын талбарын ХҮРЭЭ. WCAG 1.4.11 нь
+   * интерфейсийн элементийн зааг 3:1-ээс дээш ялгаралтай байхыг
+   * шаарддаг: хэрэглэгч талбар хаана эхэлж, хаана дуусахыг харах
+   * ёстой. Иймээс энэ нь бараан.
+   */
+  --border: #e4e4e7;
+  --border-control: #8b8b93;
+
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+
+  --success: #16653d;
+  --success-surface: #f0fdf4;
+  --success-border: #bbf7d0;
+
+  --danger: #b91c1c;
+  --danger-surface: #fef2f2;
+  --danger-border: #fecaca;
+
+  --warning: #92400e;
+  --warning-surface: #fffbeb;
+  --warning-border: #fde68a;
+
+  --ring: #09090b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+
+    --background: #09090b;
+    --surface: #121215;
+    --surface-2: #1b1b1f;
+
+    --foreground: #fafafa;
+    /* zinc-500 нь ийм бараан дэвсгэр дээр 4.5:1-д хүрэхгүй тул нэг
+       шат цайруулав. */
+    --muted: #a1a1aa;
+
+    --border: #27272a;
+    --border-control: #6b6b76;
+
+    --primary: #fafafa;
+    --primary-foreground: #18181b;
+
+    --success: #86efac;
+    --success-surface: #052e16;
+    --success-border: #14532d;
+
+    --danger: #fca5a5;
+    --danger-surface: #2a0d0d;
+    --danger-border: #7f1d1d;
+
+    --warning: #fcd34d;
+    --warning-surface: #2a1d05;
+    --warning-border: #78350f;
+
+    --ring: #fafafa;
   }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-line: var(--border);
+  --color-control: var(--border-control);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--primary-foreground);
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-success-line: var(--success-border);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+  --color-danger-line: var(--danger-border);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-warning-line: var(--warning-border);
+  --color-ring: var(--ring);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+
+  /* Geist-ийг layout.tsx ачаалж, --font-geist-sans хувьсагчаар
+     дамжуулдаг. Урьд нь энд Arial гэж бичсэн байсан тул ачаалсан
+     фонт огт хэрэглэгддэггүй байв. */
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/**
+ * Гарын товчлуураар явж буй хүнд одоо хаана байгааг нь тод харуулна.
+ *
+ * `:focus-visible` нь хулганаар дарахад гарахгүй, зөвхөн гар, туслах
+ * технологиор шилжихэд гарна. WCAG 2.2-ын шаардлагаар зааг нь
+ * эргэн тойрноосоо 3:1-ээс дээш ялгаралтай, 2px-ээс нимгэн биш.
+ */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Хөдөлгөөн багасгахыг хүссэн хүнд шилжилт харуулахгүй. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

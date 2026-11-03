@@ -37,6 +37,11 @@ const LOGIN_FAILED = "И-мэйл/утас эсвэл нууц үг буруу �
 export function createAuthRouter(config: AuthConfig): Router {
   const router: Router = Router();
 
+  // Тоолуурыг НЭГ л удаа үүсгэнэ. `rateLimit(...)`-ийг зам тус бүрт
+  // дуудвал тус бүр нь ӨӨРИЙН тоолууртай болно — тэгвэл /register,
+  // /signup хоёрыг ээлжлэн дуудаад хязгаарыг хоёр дахин тэлэх байв.
+  const registerLimit = rateLimit(REGISTER_LIMIT);
+
   /**
    * POST /api/auth/register   (хуучин нэр: /api/auth/signup)
    *
@@ -142,7 +147,7 @@ export function createAuthRouter(config: AuthConfig): Router {
     res.status(201).json({ user });
   }
 
-  router.post("/register", rateLimit(REGISTER_LIMIT), (req, res, next) => {
+  router.post("/register", registerLimit, (req, res, next) => {
     register(req, res).catch(next);
   });
 
@@ -151,7 +156,7 @@ export function createAuthRouter(config: AuthConfig): Router {
    * баг доторх тохиролцоо `/register` болсон. Хуучин нэрийг шууд
    * устгавал өмнө нь холбосон код чимээгүй эвдэрнэ — тиймээс үлдээв.
    */
-  router.post("/signup", rateLimit(REGISTER_LIMIT), (req, res, next) => {
+  router.post("/signup", registerLimit, (req, res, next) => {
     register(req, res).catch(next);
   });
 

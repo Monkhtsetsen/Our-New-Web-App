@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { getSessionUser } from "@/src/lib/api-server";
 
 const LINK_CLASS =
-  "rounded-md px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50";
+  "rounded-md px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-foreground";
 
 /**
  * Сайтын дээд цэс.
@@ -15,11 +15,11 @@ const LINK_CLASS =
  */
 export function SiteHeader() {
   return (
-    <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black">
+    <header className="border-b border-line bg-surface">
       <nav className="mx-auto flex max-w-3xl items-center justify-between px-6 py-3">
         <Link
           href="/"
-          className="text-sm font-semibold tracking-tight text-zinc-950 dark:text-zinc-50"
+          className="text-sm font-semibold tracking-tight text-foreground"
         >
           Goal App
         </Link>
@@ -52,6 +52,10 @@ async function SessionLinks() {
 
   return (
     <>
+      <Link href="/dashboard" className={LINK_CLASS}>
+        Самбар
+      </Link>
+
       {/*
         Админ холбоосыг зөвхөн админд харуулна. Энэ нь ТОХЬ болохоос
         хамгаалалт биш — хаягийг нь шууд бичсэн хүнийг /admin хуудас

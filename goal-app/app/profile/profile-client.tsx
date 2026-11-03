@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Card,
   FormError,
   FormSuccess,
-  LABEL_CLASS,
   PasswordField,
+  SecondaryButton,
   SubmitButton,
   TextField,
 } from "../_components/form";
@@ -33,26 +34,49 @@ export function ProfileClient({ user }: { user: User }) {
   return (
     <>
       <Summary user={current} />
-      <ProfileForm user={current} onSaved={setCurrent} />
-      <LogoutButton />
+
+      <div className="mt-6">
+        <Card>
+          <ProfileForm user={current} onSaved={setCurrent} />
+        </Card>
+      </div>
+
+      <LogoutRow />
     </>
   );
 }
 
+/**
+ * Ахицын гурван тоо.
+ *
+ * Тоо, нэгж хоёрыг өөр хэмжээгээр бичив: "0 хоног" гэхэд тоо нь
+ * мэдээлэл, "хоног" нь зөвхөн нэгж. Ижил хэмжээтэй байвал аль нь
+ * чухал болох нь уншигчид шууд мэдэгдэхгүй.
+ */
 function Summary({ user }: { user: User }) {
+  const items = [
+    { label: "Түвшин", value: user.level, unit: null },
+    { label: "Оноо", value: user.xp, unit: null },
+    { label: "Тасралтгүй", value: user.streak, unit: "хоног" },
+  ];
+
   return (
-    <dl className="mt-8 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-zinc-200 bg-zinc-200 dark:border-zinc-800 dark:bg-zinc-800">
-      {[
-        { label: "Түвшин", value: user.level },
-        { label: "Оноо", value: user.xp },
-        { label: "Тасралтгүй", value: `${user.streak} хоног` },
-      ].map((item) => (
-        <div key={item.label} className="bg-white px-4 py-3 dark:bg-black">
-          <dt className="text-xs text-zinc-500 dark:text-zinc-500">
+    <dl className="mt-8 grid grid-cols-3 gap-3">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="rounded-lg border border-line bg-surface px-4 py-3"
+        >
+          <dt className="truncate text-xs font-medium text-muted">
             {item.label}
           </dt>
-          <dd className="mt-0.5 text-lg font-semibold text-zinc-950 dark:text-zinc-50">
+          <dd className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
             {item.value}
+            {item.unit !== null && (
+              <span className="ml-1 text-sm font-normal text-muted">
+                {item.unit}
+              </span>
+            )}
           </dd>
         </div>
       ))}
@@ -148,7 +172,7 @@ function ProfileForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="mt-8">
+    <form onSubmit={handleSubmit} noValidate>
       {formError && <FormError>{formError}</FormError>}
       {saved && <FormSuccess>Хадгаллаа.</FormSuccess>}
 
@@ -190,11 +214,11 @@ function ProfileForm({
         />
       </div>
 
-      <fieldset className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
-        <legend className={`${LABEL_CLASS} px-0`}>Нууц үг солих</legend>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
-          Солихгүй бол хоосон орхино уу.
-        </p>
+      <fieldset className="mt-8 border-t border-line pt-6">
+        <legend className="sr-only">Нууц үг солих</legend>
+
+        <h2 className="text-sm font-medium text-foreground">Нууц үг солих</h2>
+        <p className="mt-1 text-sm text-muted">Солихгүй бол хоосон орхино уу.</p>
 
         <div className="mt-5 space-y-5">
           <PasswordField
@@ -232,7 +256,7 @@ function ProfileForm({
         зүгээр нэрээ засахад асуух шаардлагагүй.
       */}
       {needsPassword && (
-        <div className="mt-6 rounded-md border border-amber-300 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950">
+        <div className="mt-6 rounded-md border border-warning-line bg-warning-surface p-4">
           <PasswordField
             id="currentPassword"
             label="Одоогийн нууц үг"
@@ -257,27 +281,37 @@ function ProfileForm({
   );
 }
 
-function LogoutButton() {
+/**
+ * Гарах.
+ *
+ * Формоос ТУСДАА, картын гадна байрлуулав. Өмнө нь "Хадгалах"-тай
+ * ижил өргөн, ижил жинтэй байсан нь андуурахад хялбар — хоёулаа
+ * адил чухал мэт харагдана. Энэ бол ховор хийдэг, өөр төрлийн
+ * үйлдэл тул жижиг, хоёрдогч байх ёстой.
+ */
+function LogoutRow() {
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
   return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() => {
-        setPending(true);
-        // Амжилтгүй болсон ч нэвтрэх хуудас руу явна: cookie нь
-        // HttpOnly тул энд устгах арга байхгүй, гэхдээ хэрэглэгчийг
-        // эвдэрсэн хуудсан дээр барьж байх нь утгагүй.
-        void logout().finally(() => {
-          router.replace("/login");
-          router.refresh();
-        });
-      }}
-      className="mt-10 h-10 w-full rounded-md border border-zinc-300 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
-    >
-      {pending ? "Гарч байна…" : "Гарах"}
-    </button>
+    <div className="mt-6 flex items-center justify-between gap-4">
+      <p className="text-sm text-muted">Энэ төхөөрөмж дээрх сессийг хаана.</p>
+
+      <SecondaryButton
+        disabled={pending}
+        onClick={() => {
+          setPending(true);
+          // Амжилтгүй болсон ч нэвтрэх хуудас руу явна: cookie нь
+          // HttpOnly тул энд устгах арга байхгүй, гэхдээ хэрэглэгчийг
+          // эвдэрсэн хуудсан дээр барьж байх нь утгагүй.
+          void logout().finally(() => {
+            router.replace("/login");
+            router.refresh();
+          });
+        }}
+      >
+        {pending ? "Гарч байна…" : "Гарах"}
+      </SecondaryButton>
+    </div>
   );
 }

@@ -125,3 +125,82 @@ describe("verifyPassword", () => {
     );
   });
 });
+
+describe("Зэрэг ажиллах hash-ийн хязгаар", () => {
+  /**
+   * scrypt нэг бүр ~128 МБ санах ой иддэг. Хязгааргүй бол хэдхэн
+   * зэрэгцээ хүсэлт процессыг унагаана.
+   *
+   * Хязгаарыг гаднаас шууд хэмжих боломжгүй (санах ойн хэрэглээг
+   * тестээс найдвартай харах арга хомс) — харин дараалал зөв
+   * ажиллаж байгааг шалгана: суудлыг буруу шилжүүлбэл энд гацах
+   * эсвэл үр дүн холилдоно.
+   */
+  it(
+    "олон зэрэгцээ дуудлага бүгд зөв үр дүн буцаана",
+    async () => {
+      const passwords = Array.from({ length: 6 }, (_, i) => `нууц-үг-${i}-2026`);
+
+      const hashes = await Promise.all(passwords.map((p) => hashPassword(p)));
+
+      // Давс нь hash тутамд санамсаргүй тул хоёр ижил гарч болохгүй.
+      expect(new Set(hashes).size).toBe(passwords.length);
+
+      const checks = await Promise.all(
+        passwords.map((p, i) => verifyPassword(p, hashes[i] as string)),
+      );
+      expect(checks.every(Boolean)).toBe(true);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "зэрэгцээ ажиллахад буруу нууц үг зөвшөөрөгдөхгүй",
+    async () => {
+      const hash = await hashPassword("зөв-нууц-үг-2026");
+
+      const results = await Promise.all([
+        verifyPassword("буруу-нэг", hash),
+        verifyPassword("зөв-нууц-үг-2026", hash),
+        verifyPassword("буруу-хоёр", hash),
+        verifyPassword("зөв-нууц-үг-2026", hash),
+      ]);
+
+      expect(results).toEqual([false, true, false, true]);
+    },
+    TIMEOUT,
+  );
+
+  /**
+   * Суудлыг `finally` дотор чөлөөлдөг. Үгүй бол алдаа гарсан
+   * дуудлага суудлаа үүрд эзэмшиж, хоёр дахь алдааны дараа бүх
+   * нэвтрэлт мөнхөд гацах байв.
+   *
+   * Энд scrypt-ийг ӨӨРИЙГ нь унагаана: N хэт том бол Node алдаа
+   * шиднэ. Энэ нь суудал АВСНЫ ДАРАА болдог тул чөлөөлөлтийг
+   * жинхэнээр шалгаж байна. (`hashPassword("")` нь суудал авахаасаа
+   * өмнө унадаг тул энэ замыг шалгахгүй.)
+   */
+  it(
+    "scrypt дотроо унасан ч суудал чөлөөлөгдөнө",
+    async () => {
+      const salt = Buffer.alloc(16).toString("base64");
+      const key = Buffer.alloc(64).toString("base64");
+      const impossible = `scrypt$1099511627776$8$1$${salt}$${key}`;
+
+      // Хязгаараас олон удаа — чөлөөлөгдөхгүй бол эндээс цааш явахгүй.
+      const failed = await Promise.all([
+        verifyPassword("ямар ч нууц үг", impossible),
+        verifyPassword("ямар ч нууц үг", impossible),
+        verifyPassword("ямар ч нууц үг", impossible),
+        verifyPassword("ямар ч нууц үг", impossible),
+      ]);
+      expect(failed).toEqual([false, false, false, false]);
+
+      // Дараа нь энгийн ажиллагаа хэвийн үргэлжлэх ёстой.
+      const hash = await hashPassword("дараагийн-нууц-үг");
+      await expect(verifyPassword("дараагийн-нууц-үг", hash)).resolves.toBe(true);
+    },
+    TIMEOUT,
+  );
+});

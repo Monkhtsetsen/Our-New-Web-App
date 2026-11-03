@@ -6,24 +6,33 @@
  * Бүртгүүлэх, нэвтрэх, профайл гурав ижил харагдах ёстой. Гурван
  * газар хуулж бичвэл нэгийг нь засахад бусад нь хоцорно.
  *
+ * Өнгийг `globals.css`-ийн тогтмолоор (bg-surface, text-muted гэх мэт)
+ * авна — иймээс энд `dark:` хувилбар бичихгүй. Харанхуй/гэрэл хоёрын
+ * ялгааг нэг файл шийднэ.
+ *
  * `_components` гэсэн доогуур зураас нь Next.js-д "энэ бол зам биш"
  * гэж хэлнэ — /\_components гэж хандах боломжгүй.
  */
 
+/**
+ * Оролтын талбарын өндөр 40px.
+ *
+ * WCAG 2.5.8 нь хүрэх талбайг 24×24-ээс багагүй байхыг шаарддаг;
+ * хүрэлцэх дэлгэцэнд 44px зөвлөдөг. 40px нь хоёрын дунд — хулганатай
+ * дэлгэц дээр сийрэг харагдахгүй, хуруугаар ч оносон хэвээр.
+ */
 const INPUT_CLASS =
-  "mt-1.5 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 " +
-  "text-sm text-zinc-950 outline-none placeholder:text-zinc-400 " +
-  "focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 " +
+  "mt-2 block h-10 w-full rounded-md border border-control bg-surface px-3 " +
+  "text-sm text-foreground outline-none transition-colors " +
+  "placeholder:text-muted focus:border-foreground " +
   "disabled:cursor-not-allowed disabled:opacity-60 " +
-  "dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 " +
-  "dark:placeholder:text-zinc-600 dark:focus:border-zinc-500";
+  "aria-[invalid=true]:border-danger";
 
-const PASSWORD_INPUT_CLASS = `${INPUT_CLASS} pr-11`;
+const PASSWORD_INPUT_CLASS = `${INPUT_CLASS} pr-12`;
 
-export const LABEL_CLASS =
-  "block text-sm font-medium text-zinc-800 dark:text-zinc-200";
-export const ERROR_CLASS = "mt-1.5 text-sm text-red-600 dark:text-red-400";
-export const HINT_CLASS = "mt-1.5 text-sm text-zinc-500 dark:text-zinc-500";
+export const LABEL_CLASS = "block text-sm font-medium text-foreground";
+export const ERROR_CLASS = "mt-2 text-sm text-danger";
+export const HINT_CLASS = "mt-2 text-sm text-muted";
 
 function EyeIcon({ crossed }: { crossed: boolean }) {
   return (
@@ -182,7 +191,7 @@ export function PasswordField({
           onClick={onToggleVisible}
           aria-label={visible ? "Нууц үгийг нуух" : "Нууц үгийг харуулах"}
           aria-pressed={visible}
-          className="absolute inset-y-0 right-0 mt-1.5 flex w-11 items-center justify-center rounded-r-md text-zinc-500 transition-colors hover:text-zinc-800 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 dark:text-zinc-500 dark:hover:text-zinc-200"
+          className="absolute inset-y-0 right-0 mt-2 flex w-12 items-center justify-center rounded-r-md text-muted transition-colors hover:text-foreground"
         >
           <EyeIcon crossed={visible} />
         </button>
@@ -193,6 +202,11 @@ export function PasswordField({
   );
 }
 
+const BUTTON_BASE =
+  "flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium " +
+  "transition-colors disabled:cursor-not-allowed disabled:opacity-60";
+
+/** Хуудас бүрт нэг л байна. Хамгийн тод, өргөн. */
 export function SubmitButton({
   pending,
   label,
@@ -206,30 +220,108 @@ export function SubmitButton({
     <button
       type="submit"
       disabled={pending}
-      className="mt-6 flex h-10 w-full items-center justify-center rounded-md bg-zinc-900 px-4 text-sm font-medium text-zinc-50 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+      className={`${BUTTON_BASE} mt-8 w-full bg-primary text-on-primary hover:opacity-90`}
     >
       {pending ? pendingLabel : label}
     </button>
   );
 }
 
-export function FormError({ children }: { children: React.ReactNode }) {
+/** Хоёрдогч үйлдэл — хүрээтэй, дэвсгэргүй. */
+export function SecondaryButton({
+  children,
+  onClick,
+  disabled,
+  type = "button",
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  type?: "button" | "submit";
+}) {
   return (
-    <div
-      role="alert"
-      className="mb-5 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`${BUTTON_BASE} border border-control text-foreground hover:bg-surface-2`}
     >
       {children}
+    </button>
+  );
+}
+
+/**
+ * Мэдэгдлийн хайрцаг.
+ *
+ * Өнгө нь ГАНЦ дохио биш: тэмдэг, текст хоёр мөн байна. WCAG 1.4.1 —
+ * мэдээллийг зөвхөн өнгөөр дамжуулж болохгүй (өнгө ялгадаггүй хүн,
+ * хар цагаан хэвлэлт).
+ */
+function Notice({
+  tone,
+  role,
+  children,
+}: {
+  tone: "success" | "danger";
+  role: "status" | "alert";
+  children: React.ReactNode;
+}) {
+  const styles =
+    tone === "success"
+      ? "border-success-line bg-success-surface text-success"
+      : "border-danger-line bg-danger-surface text-danger";
+
+  return (
+    <div
+      role={role}
+      className={`mb-6 flex items-start gap-2.5 rounded-md border p-3 text-sm ${styles}`}
+    >
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        className="mt-0.5 h-4 w-4 shrink-0"
+      >
+        {tone === "success" ? (
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z"
+            clipRule="evenodd"
+          />
+        ) : (
+          <path
+            fillRule="evenodd"
+            d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+            clipRule="evenodd"
+          />
+        )}
+      </svg>
+      <span>{children}</span>
     </div>
+  );
+}
+
+export function FormError({ children }: { children: React.ReactNode }) {
+  return (
+    <Notice tone="danger" role="alert">
+      {children}
+    </Notice>
   );
 }
 
 export function FormSuccess({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      role="status"
-      className="mb-5 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-300"
-    >
+    <Notice tone="success" role="status">
+      {children}
+    </Notice>
+  );
+}
+
+/** Формыг багцлах хайрцаг. */
+export function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-line bg-surface p-6 sm:p-8">
       {children}
     </div>
   );
