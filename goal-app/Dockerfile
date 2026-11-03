@@ -47,6 +47,17 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Backend-ийн хаяг.
+#
+# NEXT_PUBLIC_ хувьсагчийг Next.js BUILD хийх үедээ кодод шууд
+# шигтгэдэг — ажиллах үед өөрчлөх боломжгүй. Тиймээс энэ нь ENV биш
+# ARG байх ёстой бөгөөс image бүтээхдээ л дамжуулна.
+#
+# Утга нь ХӨТЧӨӨС харагдах хаяг байх ёстой. Хүсэлт нь хэрэглэгчийн
+# хөтчөөс явдаг тул "http://backend:4000" (Docker доторх нэр) ажиллахгүй.
+ARG NEXT_PUBLIC_API_URL="http://localhost:4000"
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # next.config.ts дээр output: "standalone" тул энэ алхам нь
 # .next/standalone дотор server.js болон ажиллахад шаардлагатай
 # хамаарлуудыг цуглуулж өгнө.

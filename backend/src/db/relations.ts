@@ -9,7 +9,7 @@ import {
   reminders,
   reports,
   aiCoaches,
-} from "./schema";
+} from "./schema.js";
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   goals: many(goals),

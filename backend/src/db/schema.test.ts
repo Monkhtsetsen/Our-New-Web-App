@@ -18,7 +18,7 @@ import {
   tasks,
   userAchievements,
   users,
-} from "./schema";
+} from "./schema.js";
 
 const ALL_TABLES = [
   users,
@@ -32,10 +32,24 @@ const ALL_TABLES = [
   aiCoaches,
 ];
 
-/** Хүснэгтийн тохиргоог нэрээр нь авах туслах. */
+/**
+ * Хүснэгтээс багануудыг нэрээр нь авах туслах.
+ *
+ * Байхгүй багана асуувал undefined буцаахгүй, шууд алдаа шиднэ. Эс бөгөөс
+ * багана нэр өөрчлөгдөхөд тест нь "undefined дээр notNull байхгүй" гэсэн
+ * ойлгомжгүй алдаа өгөх байв — одоо аль багана алга болсныг шууд хэлнэ.
+ */
 function columnsOf(table: (typeof ALL_TABLES)[number]) {
   const config = getTableConfig(table);
-  return Object.fromEntries(config.columns.map((c) => [c.name, c]));
+  const byName = new Map(config.columns.map((c) => [c.name, c]));
+
+  return (name: string) => {
+    const column = byName.get(name);
+    if (column === undefined) {
+      throw new Error(`"${config.name}" хүснэгт дээр "${name}" багана алга`);
+    }
+    return column;
+  };
 }
 
 describe("Хүснэгтийн нэршил", () => {
@@ -82,7 +96,7 @@ describe("Анхны утгын тогтмолууд", () => {
   // Тогтмол ба баганын default хоёр салж явах нь түгээмэл алдаа.
   // Хоёулаа нэг утга заасан байх ёстой.
   it("DEFAULT_USER_LEVEL нь level баганын default-тай тохирно", () => {
-    const level = columnsOf(users).level;
+    const level = columnsOf(users)("level");
 
     expect(level.hasDefault).toBe(true);
     expect(level.default).toBe(DEFAULT_USER_LEVEL);
@@ -90,32 +104,53 @@ describe("Анхны утгын тогтмолууд", () => {
 });
 
 describe("tb_users баганууд", () => {
-  it("email нь давхцахгүй, заавал байх", () => {
-    const email = columnsOf(users).email;
+  // Бүртгэл и-мэйл ЭСВЭЛ утсаар үүсдэг тул аль нь ч дангаараа заавал биш.
+  it("email заавал биш ч давхцахгүй", () => {
+    const email = columnsOf(users)("email");
 
-    expect(email.notNull).toBe(true);
+    expect(email.notNull).toBe(false);
     expect(email.isUnique).toBe(true);
+  });
+
+  it("phone заавал биш ч давхцахгүй", () => {
+    const phone = columnsOf(users)("phone");
+
+    expect(phone.notNull).toBe(false);
+    expect(phone.isUnique).toBe(true);
+  });
+
+  it("и-мэйл, утас хоёулаа хоосон байхыг CHECK хориглоно", () => {
+    const { checks } = getTableConfig(users);
+
+    expect(
+      checks.find((c) => c.name === "tb_users_contact_required"),
+      "tb_users_contact_required CHECK алга",
+    ).toBeDefined();
+  });
+
+  it("нэр заавал байх", () => {
+    expect(columnsOf(users)("name").notNull).toBe(true);
   });
 
   it("xp ба streak тэгээс эхэлнэ", () => {
     const cols = columnsOf(users);
 
-    expect(cols.xp.default).toBe(0);
-    expect(cols.streak.default).toBe(0);
+    expect(cols("xp").default).toBe(0);
+    expect(cols("streak").default).toBe(0);
   });
 
   it("нууц үгийн hash заавал байх", () => {
-    expect(columnsOf(users).password_hash.notNull).toBe(true);
+    expect(columnsOf(users)("password_hash").notNull).toBe(true);
   });
 });
 
 describe("tb_tasks баганууд", () => {
   it("шинэ даалгавар биелээгүй төлөвтэй эхэлнэ", () => {
-    expect(columnsOf(tasks).completed.default).toBe(false);
+    expect(columnsOf(tasks)("completed").default).toBe(false);
   });
 
   it("даалгаврын үндсэн XP урамшуулал 10", () => {
-    const xpReward = columnsOf(tasks).xp_reward;
+    const xpReward = columnsOf(tasks)("xp_reward");
 
     expect(xpReward.notNull).toBe(true);
     expect(xpReward.default).toBe(10);
@@ -176,7 +211,11 @@ describe("Түлхүүр ба холбоос", () => {
     const pks = getTableConfig(userAchievements).primaryKeys;
 
     expect(pks).toHaveLength(1);
-    expect(pks[0].columns.map((c) => c.name).sort()).toEqual([
+
+    const composite = pks[0];
+    if (composite === undefined) throw new Error("хосолсон түлхүүр алга");
+
+    expect(composite.columns.map((c) => c.name).sort()).toEqual([
       "achievement_id",
       "user_id",
     ]);
