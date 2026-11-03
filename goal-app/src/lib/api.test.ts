@@ -36,6 +36,7 @@ describe("signup — амжилттай", () => {
           name: "Эрдэнэбаяр",
           email: "erka@example.com",
           phone: null,
+          role: "user",
           createdAt: "2026-11-03T00:00:00.000Z",
         },
       }),
@@ -46,6 +47,8 @@ describe("signup — амжилттай", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.user.email).toBe("erka@example.com");
+      // Шинэ бүртгэл энгийн хэрэглэгч эрхтэй байх ёстой.
+      expect(result.data.user.role).toBe("user");
     }
   });
 

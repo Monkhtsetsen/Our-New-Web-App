@@ -148,6 +148,9 @@ jobs:
           cat signup.json; echo
           [ "$code" = "201" ] || { echo "ХҮЛЭЭСЭН 201, ИРСЭН $code"; exit 1; }
 
+          echo "--- 1b. Шинэ бүртгэл \"user\" эрхтэй байх ---"
+          grep -q '"role":"user"' signup.json || { echo "role буруу"; exit 1; }
+
           echo "--- 2. Нууц үгийн hash хариуд гарч болохгүй ---"
           grep -q "passwordHash" signup.json && { echo "hash задарлаа"; exit 1; }
           grep -q "nuuts-ug-2026" signup.json && { echo "нууц үг задарлаа"; exit 1; }
@@ -176,6 +179,19 @@ jobs:
           cat phone.json; echo
           [ "$code" = "201" ] || { echo "ХҮЛЭЭСЭН 201, ИРСЭН $code"; exit 1; }
           grep -q '"phone":"+97699112233"' phone.json || { echo "дугаар цэгцлэгдээгүй"; exit 1; }
+
+          echo "--- 6. role-ийг хүсэлтээр админ болгох БОЛОМЖГҮЙ ---"
+          curl -s -o esc.json             -X POST http://localhost:4000/api/auth/signup             -H "Content-Type: application/json"             -d '{"name":"Заль","contact":"escalate@example.com","password":"nuuts-ug-2026","role":"admin"}'
+          cat esc.json; echo
+          grep -q '"role":"user"' esc.json || { echo "ЭРХ ШУРГУУЛАВ"; exit 1; }
+
+          echo "--- 7. robots.txt нь /admin-ийг хаасан байх ---"
+          curl -s http://localhost:3000/robots.txt | tee robots.txt
+          grep -q "Disallow: /admin" robots.txt || { echo "robots.txt буруу"; exit 1; }
+
+          echo "--- 8. /admin хуудас noindex байх ---"
+          curl -s http://localhost:3000/admin | grep -o 'name="robots" content="[^"]*"' | head -1
+          curl -s http://localhost:3000/admin | grep -q 'content="noindex' || { echo "noindex алга"; exit 1; }
 
           echo "БҮГД АМЖИЛТТАЙ"
 

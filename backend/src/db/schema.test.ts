@@ -17,6 +17,7 @@ import {
   reports,
   tasks,
   userAchievements,
+  userRoleEnum,
   users,
 } from "./schema.js";
 
@@ -89,8 +90,14 @@ describe("Анхны утгын тогтмолууд", () => {
     expect(DEFAULT_USER_LEVEL).toBe(1);
   });
 
-  it("USER_ROLE_DEFAULT нь standard_member", () => {
-    expect(USER_ROLE_DEFAULT).toBe("standard_member");
+  it("USER_ROLE_DEFAULT нь user", () => {
+    expect(USER_ROLE_DEFAULT).toBe("user");
+  });
+
+  // Шинэ бүртгэл АДМИН эрхтэй үүсч болохгүй. Энэ тест нь тэр анхны
+  // утгыг санамсаргүй өөрчлөхөөс хамгаална.
+  it("анхны эрх нь админ БИШ", () => {
+    expect(USER_ROLE_DEFAULT).not.toBe("admin");
   });
 
   // Тогтмол ба баганын default хоёр салж явах нь түгээмэл алдаа.
@@ -128,6 +135,14 @@ describe("tb_users баганууд", () => {
     ).toBeDefined();
   });
 
+  it("role багана заавал байх, анхны утга нь USER_ROLE_DEFAULT", () => {
+    const role = columnsOf(users)("role");
+
+    expect(role.notNull).toBe(true);
+    expect(role.hasDefault).toBe(true);
+    expect(role.default).toBe(USER_ROLE_DEFAULT);
+  });
+
   it("нэр заавал байх", () => {
     expect(columnsOf(users)("name").notNull).toBe(true);
   });
@@ -158,6 +173,12 @@ describe("tb_tasks баганууд", () => {
 });
 
 describe("Enum утгууд", () => {
+  // Хоёр л эрх. Шинэ утга нэмэх нь эрхийн загварыг өөрчлөх шийдвэр тул
+  // санамсаргүй болохгүйн тулд энд бэхлэв.
+  it("хэрэглэгчийн эрх", () => {
+    expect(userRoleEnum.enumValues).toEqual(["admin", "user"]);
+  });
+
   it("зорилгын ангилал", () => {
     expect(goalCategoryEnum.enumValues).toEqual([
       "study",

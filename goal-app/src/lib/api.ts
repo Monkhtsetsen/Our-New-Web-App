@@ -22,11 +22,20 @@ export const PASSWORD_MIN_LENGTH = 8;
 export type SignupFields = "name" | "contact" | "password";
 export type FieldErrors = Partial<Record<SignupFields, string>>;
 
+/** Backend-ийн user_role enum-тэй тохирно. */
+export type UserRole = "admin" | "user";
+
 export type User = {
   id: string;
   name: string;
   email: string | null;
   phone: string | null;
+  /**
+   * Эрх нь ЗӨВХӨН backend-ээс ирнэ. Хөтөч дээр үүнийг шалгаж хуудас
+   * нуух нь хамгаалалт биш — хэрэглэгч JavaScript-ийг тойрч API руу
+   * шууд хүсэлт илгээж чадна. Эцсийн шийдвэрийг сервер гаргана.
+   */
+  role: UserRole;
   createdAt: string;
 };
 
