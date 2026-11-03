@@ -92,12 +92,20 @@ export type TextFieldProps = {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  type?: "text" | "email" | "tel";
+  type?: "text" | "email" | "tel" | "date";
   autoComplete?: string;
   placeholder?: string;
   error?: string;
   hint?: string;
   disabled?: boolean;
+  /**
+   * `type="date"`-ийн хамгийн эрт сонгож болох өдөр.
+   *
+   * Хөтчийн хуанли өмнөх өдрүүдийг бүдгэрүүлнэ — хэрэглэгчийг
+   * буруу сонгоод алдаа хүлээж авахаас хамгаална. Энэ нь ТОХИЛОГ
+   * байлгах зорилготой; эцсийн шийдвэрийг сервер гаргана.
+   */
+  min?: string;
 };
 
 export function TextField({
@@ -111,6 +119,7 @@ export function TextField({
   error,
   hint,
   disabled,
+  min,
 }: TextFieldProps) {
   return (
     <div>
@@ -123,6 +132,7 @@ export function TextField({
         type={type}
         autoComplete={autoComplete}
         placeholder={placeholder}
+        min={min}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
