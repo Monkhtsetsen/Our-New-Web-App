@@ -1,0 +1,16 @@
+# Docker build-ийн контекстэд орохгүй зүйлс.
+node_modules
+dist
+coverage
+
+# Нууц утгууд — ЭНЭ МӨРИЙГ БҮҮ УСТГА
+.env
+.env.*
+!.env.example
+
+.git
+.gitignore
+README.md
+Dockerfile
+.dockerignore
+*.log

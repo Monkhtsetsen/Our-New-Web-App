@@ -1,0 +1,7 @@
+{
+  // Build-ийн тохиргоо. tsconfig.json нь тестийг ОРУУЛААД төрлийг
+  // шалгадаг (npm run typecheck), харин dist дотор тест байх
+  // шаардлагагүй тул энд хасав.
+  "extends": "./tsconfig.json",
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
+}
