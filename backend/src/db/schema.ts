@@ -41,6 +41,31 @@ export const reportPeriodEnum = pgEnum("report_period", [
 export const coachStyleEnum = pgEnum("coach_style", ["hard", "low"]);
 
 /**
+ * Хэрэглэгчийн эрх.
+ *
+ * Хоёр л түвшин байна: энгийн хэрэглэгч ба админ. Тусдаа permissions
+ * хүснэгт, нарийн эрхийн систем хэрэг болтол нэмэхгүй — хоёр утгад
+ * тэр нь илүүц төвөгтэй байдал.
+ *
+ * ЧУХАЛ: эрхийг бүртгэлийн хүсэлтээр тогтоож БОЛОХГҮЙ. Шинэ бүртгэл
+ * бүр "user" эрхтэй үүснэ. Админ болгохын тулд ӨС дээр гараар
+ * өөрчилнө (docs/architecture.md-д заавар бий).
+ */
+export const userRoleEnum = pgEnum("user_role", ["admin", "user"]);
+
+/**
+ * Баганын анхны утгууд.
+ *
+ * Хүснэгтийн тодорхойлолтод ШУУД ашиглагдана. Урьд нь эдгээр нь файлын
+ * төгсгөлд тусдаа байсан бөгөөд баганын default-тай салах эрсдэлтэй
+ * байв — одоо нэг л эх сурвалжтай.
+ */
+export const DEFAULT_USER_LEVEL = 1;
+export const DEFAULT_USER_XP = 0;
+export const DEFAULT_USER_STREAK = 0;
+export const USER_ROLE_DEFAULT = "user" as const;
+
+/**
  * Хэрэглэгч.
  *
  * Бүртгэл нь и-мэйл ЭСВЭЛ утасны дугаарын аль нэгээр үүснэ — хоёуланг нь
@@ -59,9 +84,10 @@ export const users = pgTable(
     email: text("email").unique(),
     phone: text("phone").unique(),
     passwordHash: text("password_hash").notNull(),
-    level: integer("level").default(1).notNull(),
-    xp: integer("xp").default(0).notNull(),
-    streak: integer("streak").default(0).notNull(),
+    role: userRoleEnum("role").default(USER_ROLE_DEFAULT).notNull(),
+    level: integer("level").default(DEFAULT_USER_LEVEL).notNull(),
+    xp: integer("xp").default(DEFAULT_USER_XP).notNull(),
+    streak: integer("streak").default(DEFAULT_USER_STREAK).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -170,5 +196,3 @@ export const aiCoaches = pgTable("tb_ai_coaches", {
   model: text("model").default("gemini-1.5-flash").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-export const DEFAULT_USER_LEVEL = 1;
-export const USER_ROLE_DEFAULT = "standard_member";

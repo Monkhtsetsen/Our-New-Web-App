@@ -16,7 +16,7 @@ export const authRouter: Router = Router();
  *   contact нь и-мэйл ЭСВЭЛ утасны дугаар — аль нь болохыг өөрөө таана.
  *
  * Буцаах:
- *   201  { user: { id, name, email, phone, createdAt } }
+ *   201  { user: { id, name, email, phone, role, createdAt } }
  *   400  { errors: { талбар: мессеж } }
  *   409  { errors: { contact: "..." } }   аль хэдийн бүртгэлтэй
  */
@@ -28,6 +28,9 @@ authRouter.post("/signup", async (req, res, next) => {
       return;
     }
 
+    // ЗӨВХӨН энэ гурав. `role` зэрэг бусад талбарыг хүсэлтээс АВАХГҮЙ:
+    // эс бөгөөс хэн ч { "role": "admin" } гэж илгээж өөрийгөө админ
+    // болгох байв. Эрх нь схем дээрх анхны утгаар тогтоно.
     const { name, contact, password } = body as Record<string, unknown>;
 
     // Хөтөч дээрх шалгалтыг тойрч шууд API руу хүсэлт илгээх боломжтой
@@ -78,7 +81,7 @@ authRouter.post("/signup", async (req, res, next) => {
     // үедээ серверийг ачаалах боломжтой болно.
     const passwordHash = await hashPassword(password as string);
 
-    // level, xp, streak-ийг зааж өгөхгүй — схем дээрх анхны утга (1, 0, 0)
+    // role, level, xp, streak-ийг зааж өгөхгүй — схем дээрх анхны утга
     // хүчинтэй байх ёстой. Хоёр газар давхардуулбал салж явах эрсдэлтэй.
     const [created] = await db
       .insert(users)
@@ -92,6 +95,7 @@ authRouter.post("/signup", async (req, res, next) => {
         name: users.name,
         email: users.email,
         phone: users.phone,
+        role: users.role,
         createdAt: users.createdAt,
       });
 
