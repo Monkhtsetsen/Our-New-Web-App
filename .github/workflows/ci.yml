@@ -552,6 +552,106 @@ jobs:
 
           echo "ДУУСАХ ХУГАЦААНЫ ХЭСЭГ АМЖИЛТТАЙ"
 
+      - name: Ангиллын шүүлтүүрийг шалгах
+        run: |
+          API=http://localhost:4000
+          WEB=http://localhost:3000
+
+          echo "--- 52. Ангилал сонгож зорилго үүсгэх ---"
+          for pair in "health:Өглөө гүйх" "study:Англи хэл" "career:CV шинэчлэх"; do
+            cat=${pair%%:*}
+            name=${pair#*:}
+            code=$(curl -s -o c.json -w "%{http_code}" -b ann.txt \
+              -X POST $API/api/goals -H "Content-Type: application/json" \
+              -d '{"title":"'"$name"'","category":"'"$cat"'"}')
+            cat c.json; echo
+            [ "$code" = "201" ] || { echo "$cat → ХҮЛЭЭСЭН 201, ИРСЭН $code"; exit 1; }
+            grep -q "\"category\":\"$cat\"" c.json || {
+              echo "$cat ХАДГАЛАГДСАНГҮЙ"; exit 1; }
+          done
+
+          echo "--- 53. Ангилал сонгоогүй бол personal ---"
+          curl -s -o c2.json -b ann.txt -X POST $API/api/goals \
+            -H "Content-Type: application/json" -d '{"title":"Ангилалгүй"}'
+          grep -q '"category":"personal"' c2.json || { echo "анхны ангилал буруу"; exit 1; }
+
+          # Чимээгүйхэн "personal" болгож залруулбал хэрэглэгч зорилгоо
+          # эрүүл мэндийн шүүлтүүрээс хэзээ ч олохгүй, яагаад гэдгийг ч
+          # мэдэхгүй. Иймээс алдаа хэлнэ.
+          echo "--- 54. Танихгүй ангилал → 400 ---"
+          for value in "helth" "HEALTH" "work" "хувийн"; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -b ann.txt \
+              -X POST $API/api/goals -H "Content-Type: application/json" \
+              -d '{"title":"Буруу ангилал","category":"'"$value"'"}')
+            [ "$code" = "400" ] || { echo "'$value' → ХҮЛЭЭСЭН 400, ИРСЭН $code"; exit 1; }
+          done
+
+          echo "--- 55. ?category=health нь ЗӨВХӨН тэр ангиллыг буцаана ---"
+          curl -s -b ann.txt "$API/api/goals?category=health" -o h.json
+          cat h.json; echo
+          grep -q "Өглөө гүйх" h.json || { echo "health зорилго алга"; exit 1; }
+          for other in "Англи хэл" "CV шинэчлэх" "Ангилалгүй"; do
+            grep -q "$other" h.json && { echo "ШҮҮЛТҮҮР НЭВЧЛЭЭ: $other"; exit 1; }
+          done
+
+          echo "--- 56. Шүүлтүүргүй бол бүгд харагдана ---"
+          curl -s -b ann.txt $API/api/goals -o all.json
+          for name in "Өглөө гүйх" "Англи хэл" "CV шинэчлэх" "Ангилалгүй"; do
+            grep -q "$name" all.json || { echo "$name алга"; exit 1; }
+          done
+
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          # Шүүлтүүр нь өгөгдлийн тусгаарлалтыг ЗАМААР НЬ эвдэж
+          # болохгүй. `where(userId)`-г `where(category)`-гаар СОЛИХ нь
+          # хийхэд хялбар алдаа — тэр даруй бүх хэрэглэгчийн зорилго
+          # нээгдэнэ. Иймээс шүүлттэй хүсэлтийг ч тусад нь барина.
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          echo "--- 57. Шүүлттэй хүсэлт ч өөр хэрэглэгчийг нээхгүй ---"
+          curl -s -b bob.txt "$API/api/goals?category=health" -o bob-h.json
+          cat bob-h.json; echo
+          grep -q "Өглөө гүйх" bob-h.json && {
+            echo "ӨГӨГДӨЛ ЗАДАРЛАА — шүүлтүүрээр өөр хэрэглэгчийн зорилго гарав"
+            exit 1
+          }
+          grep -q '"goals":\[\]' bob-h.json || { echo "хоосон жагсаалт хүлээсэн"; exit 1; }
+
+          echo "--- 58. Танихгүй шүүлтүүр → 400, бүгдийг чимээгүй буцаахгүй ---"
+          code=$(curl -s -o bad-cat.json -w "%{http_code}" -b ann.txt \
+            "$API/api/goals?category=helth")
+          [ "$code" = "400" ] || { echo "ХҮЛЭЭСЭН 400, ИРСЭН $code"; exit 1; }
+          grep -q "Англи хэл" bad-cat.json && { echo "БҮГДИЙГ БУЦААВ"; exit 1; }
+
+          echo "--- 59. Frontend — шүүлтүүрийн товчлуурууд ба шошго ---"
+          curl -s -o cat.html -b ann.txt $WEB/goals
+          for label in "Бүгд" "Суралцах" "Карьер" "Санхүү" "Эрүүл мэнд" "Хувийн"; do
+            grep -q "$label" cat.html || { echo "'$label' товчлуур алга"; exit 1; }
+          done
+          grep -q 'aria-label="Ангиллын шүүлтүүр"' cat.html || {
+            echo "шүүлтүүрт хүртээмжийн нэр алга"; exit 1; }
+          # Шүүлтгүй үед мөр бүр ангиллынхаа шошготой гарна.
+          grep -q 'href="/goals?category=health"' cat.html || {
+            echo "health холбоос алга"; exit 1; }
+
+          echo "--- 60. Frontend — ?category=health зөвхөн тэр ангиллыг харуулна ---"
+          curl -s -o cat-h.html -b ann.txt "$WEB/goals?category=health"
+          grep -q "Өглөө гүйх" cat-h.html || { echo "health зорилго хуудсан дээр алга"; exit 1; }
+          grep -q "Англи хэл" cat-h.html && { echo "ШҮҮЛТҮҮР НЭВЧЛЭЭ"; exit 1; }
+          # Сонгогдсон товчлуур нь зөвхөн өнгөөр биш, aria-ээр ч
+          # тэмдэглэгдэнэ — дэлгэц уншигч програм үүнийг хэлнэ.
+          grep -q 'aria-current="page"' cat-h.html || {
+            echo "сонгогдсон товчлуур aria-current-гүй"; exit 1; }
+
+          echo "--- 61. Хоосон ангилал — 'зорилго алга' мэдэгдэл ---"
+          curl -s -o cat-empty.html -b ann.txt "$WEB/goals?category=finance"
+          grep -q "Энэ ангилалд зорилго алга" cat-empty.html || {
+            echo "ХООСОН АНГИЛЛЫН МЭДЭГДЭЛ АЛГА"
+            exit 1
+          }
+          grep -q "бүх зорилгоо харах" cat-empty.html || {
+            echo "шүүлтүүрээс гарах холбоос алга"; exit 1; }
+
+          echo " АНГИЛЛЫН ХЭСЭГ АМЖИЛТТАЙ"
+
       - name: Сервисүүдийн лог
         if: always()
         run: docker compose logs --no-color | tee docker-run.log
