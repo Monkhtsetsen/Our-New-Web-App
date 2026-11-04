@@ -92,12 +92,20 @@ export type TextFieldProps = {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  type?: "text" | "email" | "tel";
+  type?: "text" | "email" | "tel" | "date";
   autoComplete?: string;
   placeholder?: string;
   error?: string;
   hint?: string;
   disabled?: boolean;
+  /**
+   * `type="date"`-ийн хамгийн эрт сонгож болох өдөр.
+   *
+   * Хөтчийн хуанли өмнөх өдрүүдийг бүдгэрүүлнэ — хэрэглэгчийг
+   * буруу сонгоод алдаа хүлээж авахаас хамгаална. Энэ нь ТОХИЛОГ
+   * байлгах зорилготой; эцсийн шийдвэрийг сервер гаргана.
+   */
+  min?: string;
 };
 
 export function TextField({
@@ -111,6 +119,7 @@ export function TextField({
   error,
   hint,
   disabled,
+  min,
 }: TextFieldProps) {
   return (
     <div>
@@ -123,6 +132,7 @@ export function TextField({
         type={type}
         autoComplete={autoComplete}
         placeholder={placeholder}
+        min={min}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
@@ -132,6 +142,62 @@ export function TextField({
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
         className={INPUT_CLASS}
       />
+      <Message id={id} error={error} hint={hint} />
+    </div>
+  );
+}
+
+export type SelectFieldProps = {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly { value: string; label: string }[];
+  error?: string;
+  hint?: string;
+  disabled?: boolean;
+};
+
+/**
+ * Хязгаарлагдмал сонголт.
+ *
+ * Жирийн `<select>`-ийг санаатай хэрэглэв. Өөрөө бичсэн dropdown нь
+ * товчны үүрэг, сумны хөдөлгөөн, гадна дарахад хаагдах, дэлгэц
+ * уншигчид зарлах зэрэг бүхнийг ДАХИН бичихийг шаарддаг — хөтөч
+ * түүнийг аль хэдийн зөв хийчихсэн байна. Нэмээд хүрэлцэх дэлгэцэнд
+ * хөтчийн өөрийн сонголт нь хамаагүй эвтэйхэн.
+ */
+export function SelectField({
+  id,
+  label,
+  value,
+  onChange,
+  options,
+  error,
+  hint,
+  disabled,
+}: SelectFieldProps) {
+  return (
+    <div>
+      <label htmlFor={id} className={LABEL_CLASS}>
+        {label}
+      </label>
+      <select
+        id={id}
+        name={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
+        className={INPUT_CLASS}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
       <Message id={id} error={error} hint={hint} />
     </div>
   );

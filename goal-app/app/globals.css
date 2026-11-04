@@ -45,6 +45,26 @@
   --warning-border: #fde68a;
 
   --ring: #09090b;
+
+  /**
+   * Ангиллын өнгө.
+   *
+   * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   * Эдгээр нь зөвхөн ДҮРС, ТОЙРОГ будна — текстийг хэзээ ч будахгүй.
+   *
+   * Ангиллыг өнгөөр хэлэх нь WCAG 1.4.1-ийг зөрчинө: утга нь зөвхөн
+   * өнгөнд байж болохгүй. Иймээс ангилал бүр ӨӨР ДҮРС, ӨӨР НЭРТЭЙ
+   * байна — өнгө нь тэдний дээр нэмэлт болж, ялгаж харахад хурдасгана.
+   *
+   * График элемент тул WCAG 1.4.11-ээр 3:1 шаардагдана. Бүгд
+   * 4.48:1-ээс дээш (`--surface-2` дэвсгэр дээр тооцсон).
+   * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   */
+  --category-study: #4338ca;
+  --category-career: #0f766e;
+  --category-finance: #a16207;
+  --category-health: #15803d;
+  --category-personal: #7e22ce;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -79,6 +99,13 @@
     --warning-border: #78350f;
 
     --ring: #fafafa;
+
+    /* Бараан дэвсгэр дээр ижил өнгө бүдгэрнэ — цайруулсан хувилбар. */
+    --category-study: #a5b4fc;
+    --category-career: #5eead4;
+    --category-finance: #fcd34d;
+    --category-health: #86efac;
+    --category-personal: #d8b4fe;
   }
 }
 
@@ -102,6 +129,12 @@
   --color-warning-surface: var(--warning-surface);
   --color-warning-line: var(--warning-border);
   --color-ring: var(--ring);
+
+  --color-category-study: var(--category-study);
+  --color-category-career: var(--category-career);
+  --color-category-finance: var(--category-finance);
+  --color-category-health: var(--category-health);
+  --color-category-personal: var(--category-personal);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

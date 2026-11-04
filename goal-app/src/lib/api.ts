@@ -29,7 +29,9 @@ export type FieldName =
   | "currentPassword"
   | "newPassword"
   | "title"
-  | "description";
+  | "description"
+  | "deadline"
+  | "category";
 
 export type FieldErrors = Partial<Record<FieldName, string>>;
 
@@ -212,7 +214,25 @@ export function updateProfile(
 }
 
 /** Backend-ийн goal_category enum-тэй тохирно. */
-export type GoalCategory = "study" | "career" | "finance" | "health" | "personal";
+export const GOAL_CATEGORIES = [
+  "study",
+  "career",
+  "finance",
+  "health",
+  "personal",
+] as const;
+
+export type GoalCategory = (typeof GOAL_CATEGORIES)[number];
+
+/**
+ * Мөр нь ангилал эсэх.
+ *
+ * URL-ийн `?category=` утгыг шалгахад хэрэглэнэ. Хэрэглэгч хаягийн
+ * мөрөнд юу ч бичиж болно — шалгалгүй цааш дамжуулж болохгүй.
+ */
+export function isGoalCategory(value: string): value is GoalCategory {
+  return (GOAL_CATEGORIES as readonly string[]).includes(value);
+}
 
 /** Backend-ийн goal_status enum-тэй тохирно. */
 export type GoalStatus = "in_progress" | "completed" | "abandoned";
@@ -229,13 +249,19 @@ export type Goal = {
   updatedAt: string;
 };
 
-export function listGoals(): Promise<ApiResult<{ goals: Goal[] }>> {
-  return request<{ goals: Goal[] }>("/api/goals", { method: "GET" });
+export function listGoals(
+  category?: GoalCategory,
+): Promise<ApiResult<{ goals: Goal[] }>> {
+  const query = category === undefined ? "" : `?category=${category}`;
+  return request<{ goals: Goal[] }>(`/api/goals${query}`, { method: "GET" });
 }
 
 export type NewGoal = {
   title: string;
   description?: string;
+  /** "YYYY-MM-DD". Тохируулаагүй бол огт илгээхгүй. */
+  deadline?: string;
+  category?: GoalCategory;
 };
 
 export function createGoal(input: NewGoal): Promise<ApiResult<{ goal: Goal }>> {

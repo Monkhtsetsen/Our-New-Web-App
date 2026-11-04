@@ -2,13 +2,28 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Card,
   FormError,
+  FormSuccess,
+  SelectField,
   SubmitButton,
   TextField,
 } from "../_components/form";
-import { createGoal, type FieldErrors, type Goal } from "@/src/lib/api";
+import {
+  createGoal,
+  type FieldErrors,
+  type Goal,
+  type GoalCategory,
+} from "@/src/lib/api";
+import {
+  CATEGORIES,
+  CATEGORY_ORDER,
+  CategoryBadge,
+  DEFAULT_CATEGORY,
+} from "@/src/lib/categories";
+import { describeDeadline } from "@/src/lib/dates";
 
 /**
  * Зорилгын жагсаалт ба шинээр үүсгэх форм.
@@ -16,44 +31,114 @@ import { createGoal, type FieldErrors, type Goal } from "@/src/lib/api";
  * Эхний жагсаалт сервер талаас бэлэн ирнэ. Шинэ зорилго нэмэгдэхэд
  * хуудсыг бүтнээр дахин ачаалахгүй, жагсаалтдаа шууд нэмнэ — дараа
  * нь `router.refresh()` сервер талын хуулбарыг нь цэгцэлнэ.
+ *
+ * `today` нь серверээс пропоор ирнэ. Энд `new Date()` дуудвал сервер
+ * ба хөтөч хоёр өөр өдөр гаргаж hydration зөрөх эрсдэлтэй.
  */
-export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
+export function GoalsClient({
+  initialGoals,
+  today,
+  activeCategory,
+}: {
+  initialGoals: Goal[];
+  today: string;
+  activeCategory?: GoalCategory;
+}) {
   const [goals, setGoals] = useState(initialGoals);
+
+  /**
+   * Шинэ зорилгыг жагсаалтад нэмэх.
+   *
+   * Шүүлтүүр нээлттэй байхад ӨӨР ангиллын зорилго нэмэгдвэл түүнийг
+   * жагсаалтад хийхгүй — хийвэл шүүлтүүрийн утга хуурамч болно.
+   * Харин хэрэглэгчид "юу ч болсонгүй" гэж харагдах нь бүүр дор тул
+   * форм нь тусад нь мэдэгдэнэ.
+   */
+  function handleCreated(goal: Goal) {
+    if (activeCategory !== undefined && goal.category !== activeCategory) {
+      return;
+    }
+    setGoals((list) => [goal, ...list]);
+  }
 
   return (
     <>
       <Card>
-        <GoalForm onCreated={(goal) => setGoals((list) => [goal, ...list])} />
+        <GoalForm
+          today={today}
+          activeCategory={activeCategory}
+          onCreated={handleCreated}
+        />
       </Card>
 
-      <GoalList goals={goals} />
+      <GoalList goals={goals} today={today} activeCategory={activeCategory} />
     </>
   );
 }
 
-function GoalForm({ onCreated }: { onCreated: (goal: Goal) => void }) {
+function GoalForm({
+  today,
+  activeCategory,
+  onCreated,
+}: {
+  today: string;
+  activeCategory?: GoalCategory;
+  onCreated: (goal: Goal) => void;
+}) {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [deadline, setDeadline] = useState("");
+
+  // Шүүлтүүр нээлттэй бол тэр ангиллыг анхны утга болгоно — хэрэглэгч
+  // "эрүүл мэнд"-ийг харж байгаад зорилго нэмэх гэж байгаа бол тэр
+  // ангилалд нэмэхийг хүсэж байгаа нь илэрхий.
+  const [category, setCategory] = useState<GoalCategory>(
+    activeCategory ?? DEFAULT_CATEGORY,
+  );
+
   const [pending, setPending] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string>();
+  const [notice, setNotice] = useState<string>();
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setErrors({});
     setFormError(undefined);
+    setNotice(undefined);
     setPending(true);
 
-    const result = await createGoal({ title, description });
+    // Хоосон хугацааг ОГТ илгээхгүй. "" гэж илгээвэл "тохируулаагүй"
+    // гэдгийг "хоосон бичсэн" гэснээс ялгах шалтгаан байхгүй болно.
+    const result = await createGoal({
+      title,
+      description,
+      category,
+      ...(deadline === "" ? {} : { deadline }),
+    });
     setPending(false);
 
     if (result.ok) {
-      onCreated(result.data.goal);
+      const created = result.data.goal;
+      onCreated(created);
+
+      // Нэмсэн зорилго нь нээлттэй шүүлтүүрт таарахгүй бол доорх
+      // жагсаалтад гарахгүй. Чимээгүй орхивол хэрэглэгч товч
+      // ажиллаагүй гэж бодно.
+      if (activeCategory !== undefined && created.category !== activeCategory) {
+        const where = CATEGORIES[created.category].label;
+        setNotice(
+          `Зорилго нэмэгдлээ. «${where}» ангилалд байгаа тул энэ ` +
+            "шүүлтүүрт харагдахгүй.",
+        );
+      }
+
       setTitle("");
       setDescription("");
+      setDeadline("");
       router.refresh();
       return;
     }
@@ -75,6 +160,7 @@ function GoalForm({ onCreated }: { onCreated: (goal: Goal) => void }) {
   return (
     <form onSubmit={handleSubmit} noValidate>
       {formError && <FormError>{formError}</FormError>}
+      {notice && <FormSuccess>{notice}</FormSuccess>}
 
       <h2 className="text-sm font-medium text-foreground">Шинэ зорилго</h2>
 
@@ -99,6 +185,31 @@ function GoalForm({ onCreated }: { onCreated: (goal: Goal) => void }) {
           hint="Яагаад энэ зорилго чухал вэ, юу гэж тоолох вэ."
           disabled={pending}
         />
+
+        <SelectField
+          id="category"
+          label="Ангилал"
+          value={category}
+          onChange={(value) => setCategory(value as GoalCategory)}
+          options={CATEGORY_ORDER.map((key) => ({
+            value: key,
+            label: CATEGORIES[key].label,
+          }))}
+          error={errors.category}
+          disabled={pending}
+        />
+
+        <TextField
+          id="deadline"
+          label="Дуусах хугацаа"
+          type="date"
+          min={today}
+          value={deadline}
+          onChange={setDeadline}
+          error={errors.deadline}
+          hint="Заавал биш. Хугацаа тавих нь төвлөрөхөд тусална."
+          disabled={pending}
+        />
       </div>
 
       <SubmitButton
@@ -110,15 +221,29 @@ function GoalForm({ onCreated }: { onCreated: (goal: Goal) => void }) {
   );
 }
 
-function GoalList({ goals }: { goals: Goal[] }) {
+function GoalList({
+  goals,
+  today,
+  activeCategory,
+}: {
+  goals: Goal[];
+  today: string;
+  activeCategory?: GoalCategory;
+}) {
   if (goals.length === 0) {
-    return <EmptyState />;
+    return activeCategory === undefined ? (
+      <EmptyState />
+    ) : (
+      <EmptyCategoryState category={activeCategory} />
+    );
   }
 
   return (
     <section className="mt-8">
       <h2 className="text-sm font-medium text-foreground">
-        Миний зорилгууд
+        {activeCategory === undefined
+          ? "Миний зорилгууд"
+          : CATEGORIES[activeCategory].label}
         <span className="ml-2 font-normal text-muted">{goals.length}</span>
       </h2>
 
@@ -128,16 +253,126 @@ function GoalList({ goals }: { goals: Goal[] }) {
             key={goal.id}
             className="rounded-lg border border-line bg-surface p-4"
           >
-            <h3 className="font-medium text-foreground">{goal.title}</h3>
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="font-medium text-foreground">{goal.title}</h3>
+              {/* Шүүлтүүр нээлттэй байхад шошго нь илүүц — мөр бүр
+                  дээр ижил утга давтагдана. */}
+              {activeCategory === undefined && (
+                <CategoryBadge category={goal.category} />
+              )}
+            </div>
             {goal.description !== null && (
               <p className="mt-1.5 text-sm leading-6 text-muted">
                 {goal.description}
               </p>
             )}
+            {goal.deadline !== null && (
+              <Deadline deadline={goal.deadline} today={today} />
+            )}
           </li>
         ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * Зорилгын дуусах хугацаа.
+ *
+ * Үлдсэн хоногийг эхэлж бичнэ — "7 хоног үлдсэн" нь "11 дүгээр сарын
+ * 10"-аас хамаагүй шууд ойлгогддог. Яг өдрийг хажууд нь үлдээнэ,
+ * хуанлиндаа тэмдэглэхэд хэрэгтэй.
+ *
+ * Хугацаа хэтэрсэн гэдгийг ГУРВАН зүйл зэрэг хэлнэ: текст, дүрс,
+ * өнгө. Зөвхөн өнгөөр хэлбэл өнгө сохор хэрэглэгч түүнийг хармагц
+ * мэдэхгүй (WCAG 1.4.1).
+ */
+function Deadline({ deadline, today }: { deadline: string; today: string }) {
+  const { label, date, overdue, soon } = describeDeadline(deadline, today);
+
+  const tone = overdue
+    ? "text-danger"
+    : soon
+      ? "text-warning"
+      : "text-muted";
+
+  return (
+    <p className={`mt-2.5 flex items-center gap-1.5 text-sm ${tone}`}>
+      {overdue ? <AlertIcon /> : <ClockIcon />}
+      <span className="font-medium">{label}</span>
+      <span className="text-muted">·</span>
+      <time dateTime={deadline} className="text-muted">
+        {date}
+      </time>
+    </p>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4 shrink-0"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4 shrink-0"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v4.5" />
+      <path d="M12 16h.01" />
+    </svg>
+  );
+}
+
+/**
+ * Тодорхой ангилалд зорилго байхгүй.
+ *
+ * Хоосон хүснэгт харуулахгүй: хэрэглэгч зорилгоо алдсан гэж бодож
+ * магадгүй. Юу болсныг хэлээд, шүүлтүүрээс гарах гарцыг нь хамт
+ * үзүүлнэ — "бүгд"-рүү буцахын тулд товчоо хайх шаардлагагүй.
+ */
+function EmptyCategoryState({ category }: { category: GoalCategory }) {
+  const { label, tone, Icon } = CATEGORIES[category];
+
+  return (
+    <div className="mt-8 rounded-lg border border-dashed border-control p-8 text-center">
+      <Icon className={`mx-auto h-6 w-6 ${tone}`} />
+      <p className="mt-3 text-sm font-medium text-foreground">
+        Энэ ангилалд зорилго алга.
+      </p>
+      <p className="mx-auto mt-1.5 max-w-sm text-sm leading-6 text-muted">
+        «{label}» ангилалд одоогоор зорилго байхгүй. Дээрх формоор нэмэх,
+        эсвэл{" "}
+        <Link
+          href="/goals"
+          className="font-medium text-foreground underline underline-offset-2"
+        >
+          бүх зорилгоо харах
+        </Link>
+        .
+      </p>
+    </div>
   );
 }
 
