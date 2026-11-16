@@ -1,0 +1,25 @@
+# Goal App — Лаб 8-ийн Docker image (goal-app:1.0), Minikube дээр 3 replica
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: goal-app
+  labels:
+    app: goal-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: goal-app
+  template:
+    metadata:
+      labels:
+        app: goal-app
+    spec:
+      containers:
+        - name: goal-app
+          image: goal-app:1.0
+          # Minikube-ийн Docker дотор build хийсэн бол Never; эсвэл: minikube image load goal-app:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
