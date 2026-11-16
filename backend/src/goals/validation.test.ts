@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  GOAL_DEADLINE_MAX_YEARS,
   GOAL_DESCRIPTION_MAX_LENGTH,
   GOAL_TITLE_MAX_LENGTH,
   validateGoal,
 } from "./validation.js";
+
+/**
+ * Тестийн "өнөөдөр".
+ *
+ * Шалгагчид өдрийг гаднаас өгч болдог тул бодит цагаас хамаарахгүй.
+ * Үгүй бол "маргааш" гэж бичсэн тест маргааш өөрөө унах байв.
+ */
+const TODAY = "2026-11-03";
 
 describe("validateGoal — зөв оролт", () => {
   it("нэрийг хүлээж авна", () => {
@@ -105,6 +114,144 @@ describe("validateGoal — хүсэлтээс авч болохгүй талба
     });
 
     expect(errors).toEqual({});
-    expect(Object.keys(goal).sort()).toEqual(["description", "title"]);
+    expect(Object.keys(goal).sort()).toEqual([
+      "deadline",
+      "description",
+      "title",
+    ]);
+  });
+});
+
+describe("validateGoal — дуусах хугацаа", () => {
+  it("хугацаа нь сонголт — байхгүй бол null", () => {
+    for (const value of [undefined, null, "", "   "]) {
+      const { errors, goal } = validateGoal(
+        { title: "Марафон гүйх", deadline: value },
+        TODAY,
+      );
+
+      expect(errors).toEqual({});
+      expect(goal.deadline).toBeNull();
+    }
+  });
+
+  it("ирээдүйн өдрийг хүлээж авна", () => {
+    const { errors, goal } = validateGoal(
+      { title: "Марафон гүйх", deadline: "2027-06-15" },
+      TODAY,
+    );
+
+    expect(errors).toEqual({});
+    expect(goal.deadline).toBe("2027-06-15");
+  });
+
+  /**
+   * Өнөөдөр нь зөвшөөрөгдөнө.
+   *
+   * "Өнөөдөр дуусгах" гэдэг нь бүрэн хүчинтэй зорилго. Хязгаарыг
+   * `<` биш `<=` гэж бичвэл энэ тест унана.
+   */
+  it("өнөөдрийг зөвшөөрнө", () => {
+    const { errors, goal } = validateGoal(
+      { title: "Марафон гүйх", deadline: TODAY },
+      TODAY,
+    );
+
+    expect(errors).toEqual({});
+    expect(goal.deadline).toBe(TODAY);
+  });
+
+  it("өчигдрийг татгалзана", () => {
+    const { errors, goal } = validateGoal(
+      { title: "Марафон гүйх", deadline: "2026-11-02" },
+      TODAY,
+    );
+
+    expect(errors.deadline).toBeDefined();
+    expect(goal.deadline).toBeNull();
+  });
+
+  it("буруу хэлбэрийг татгалзана", () => {
+    for (const value of ["маргааш", "2027/06/15", "15-06-2027", "2027-6-5"]) {
+      const { errors } = validateGoal(
+        { title: "Марафон гүйх", deadline: value },
+        TODAY,
+      );
+
+      expect(errors.deadline, value).toBeDefined();
+    }
+  });
+
+  /**
+   * Хэлбэрээрээ зөв ч хуанлид байхгүй өдөр.
+   *
+   * Зөвхөн регексээр шалгавал ӨС рүү 2027-02-30 гэж орж, дараа нь
+   * өөр өдөр болж хувирна.
+   */
+  it("байхгүй өдрийг татгалзана", () => {
+    const { errors } = validateGoal(
+      { title: "Марафон гүйх", deadline: "2027-02-30" },
+      TODAY,
+    );
+
+    expect(errors.deadline).toBeDefined();
+  });
+
+  it("мөр биш утгыг татгалзана", () => {
+    for (const value of [42, true, { year: 2027 }, ["2027-06-15"]]) {
+      const { errors } = validateGoal(
+        { title: "Марафон гүйх", deadline: value },
+        TODAY,
+      );
+
+      expect(errors.deadline, JSON.stringify(value)).toBeDefined();
+    }
+  });
+
+  it("илүүдэл хоосон зайг хасна", () => {
+    const { errors, goal } = validateGoal(
+      { title: "Марафон гүйх", deadline: "  2027-06-15  " },
+      TODAY,
+    );
+
+    expect(errors).toEqual({});
+    expect(goal.deadline).toBe("2027-06-15");
+  });
+
+  it("хэтэрхий хол хугацааг татгалзана", () => {
+    const tooFar = `${2026 + GOAL_DEADLINE_MAX_YEARS + 1}-01-01`;
+    const { errors } = validateGoal(
+      { title: "Марафон гүйх", deadline: tooFar },
+      TODAY,
+    );
+
+    expect(errors.deadline).toContain(String(GOAL_DEADLINE_MAX_YEARS));
+  });
+
+  it("хязгаар дотор байгаа хол хугацааг зөвшөөрнө", () => {
+    const limit = `${2026 + GOAL_DEADLINE_MAX_YEARS}-11-03`;
+    const { errors } = validateGoal(
+      { title: "Марафон гүйх", deadline: limit },
+      TODAY,
+    );
+
+    expect(errors.deadline).toBeUndefined();
+  });
+
+  /**
+   * Нэрийн алдаа хугацааны алдааг дарж хаахгүй.
+   *
+   * Хоёр талбар хоёулаа буруу байхад хэрэглэгчид ХОЁУЛАНГ нь хэлэх
+   * ёстой. Нэгийг нь зассаны дараа дахиад нөгөөг нь хэлэх нь
+   * хэрэглэгчийг дэмий тойруулна.
+   */
+  it("нэр, хугацаа хоёулаа буруу бол хоёр алдаа", () => {
+    const { errors } = validateGoal(
+      { title: "   ", deadline: "2020-01-01" },
+      TODAY,
+    );
+
+    expect(errors.title).toBeDefined();
+    expect(errors.deadline).toBeDefined();
   });
 });

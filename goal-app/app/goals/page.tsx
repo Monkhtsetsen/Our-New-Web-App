@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getGoals, getSessionUser } from "@/src/lib/api-server";
+import { todayInAppZone } from "@/src/lib/dates";
 import { FormError } from "../_components/form";
 import { GoalsClient } from "./goals-client";
 
@@ -51,7 +52,9 @@ async function GoalsLoader() {
     );
   }
 
-  return <GoalsClient initialGoals={goals} />;
+  // "Өнөөдөр"-ийг ЭНД нэг л удаа тооцно. Клиент талд дахин тооцвол
+  // сервер ба хөтөч өөр өдөр гаргаж hydration зөрөх эрсдэлтэй.
+  return <GoalsClient initialGoals={goals} today={todayInAppZone()} />;
 }
 
 function GoalsSkeleton() {

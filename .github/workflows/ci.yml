@@ -461,6 +461,97 @@ jobs:
 
           echo "ЗОРИЛГЫН ХЭСЭГ АМЖИЛТТАЙ"
 
+      - name: Дуусах хугацааг шалгах
+        run: |
+          API=http://localhost:4000
+          WEB=http://localhost:3000
+
+          # Өдрүүдийг аппын цагийн бүсээр тооцно. Runner нь UTC дээр
+          # ажилладаг тул шууд `date` хийвэл Улаанбаатарын шөнө дундаас
+          # 08:00 хүртэлх хугацаанд өчигдрийг "өнөөдөр" гэж тоолох байв —
+          # яг тэр нь backend-ийн зассан алдаа.
+          export TZ=Asia/Ulaanbaatar
+          TODAY=$(date +%Y-%m-%d)
+          SOON=$(date -d "+3 days" +%Y-%m-%d)
+          PAST=$(date -d "-5 days" +%Y-%m-%d)
+          FAR=$(date -d "+12 years" +%Y-%m-%d)
+          OVERDUE=$(date -d "-9 days" +%Y-%m-%d)
+          echo "өнөөдөр=$TODAY ойрхон=$SOON өнгөрсөн=$PAST хол=$FAR"
+
+          echo "--- 42. Хугацаатай зорилго үүснэ ---"
+          code=$(curl -s -o d1.json -w "%{http_code}" -b ann.txt             -X POST $API/api/goals -H "Content-Type: application/json"             -d '{"title":"Шалгалтанд бэлдэх","deadline":"'"$SOON"'"}')
+          cat d1.json; echo
+          [ "$code" = "201" ] || { echo "ХҮЛЭЭСЭН 201, ИРСЭН $code"; exit 1; }
+          grep -q "\"deadline\":\"$SOON\"" d1.json || { echo "хугацаа буцаж ирсэнгүй"; exit 1; }
+
+          echo "--- 43. Хугацаагүй зорилго ч хүчинтэй ---"
+          code=$(curl -s -o d2.json -w "%{http_code}" -b ann.txt             -X POST $API/api/goals -H "Content-Type: application/json"             -d '{"title":"Хугацаагүй зорилго"}')
+          [ "$code" = "201" ] || { echo "ХҮЛЭЭСЭН 201, ИРСЭН $code"; exit 1; }
+          grep -q '"deadline":null' d2.json || { echo "хугацаагүй бол null байх ёстой"; exit 1; }
+
+          echo "--- 44. ЯГ ӨНӨӨДӨР зөвшөөрөгдөнө ---"
+          code=$(curl -s -o d3.json -w "%{http_code}" -b ann.txt             -X POST $API/api/goals -H "Content-Type: application/json"             -d '{"title":"Өнөөдөр дуусах","deadline":"'"$TODAY"'"}')
+          cat d3.json; echo
+          [ "$code" = "201" ] || { echo "ӨНӨӨДРИЙГ ТАТГАЛЗАВ: $code"; exit 1; }
+
+          echo "--- 45. Өнгөрсөн өдөр → 400 ---"
+          code=$(curl -s -o d4.json -w "%{http_code}" -b ann.txt             -X POST $API/api/goals -H "Content-Type: application/json"             -d '{"title":"Өнгөрсөн","deadline":"'"$PAST"'"}')
+          cat d4.json; echo
+          [ "$code" = "400" ] || { echo "ХҮЛЭЭСЭН 400, ИРСЭН $code"; exit 1; }
+          grep -q '"deadline"' d4.json || { echo "алдаа deadline талбар дээр гарах ёстой"; exit 1; }
+
+          # Хэлбэрээрээ зөв ч хуанлид байхгүй өдөр. Зөвхөн регексээр
+          # шалгавал ӨС рүү орохдоо чимээгүйхэн 03-02 болж хувирна.
+          echo "--- 46. Байхгүй өдөр (2027-02-30) → 400 ---"
+          code=$(curl -s -o d5.json -w "%{http_code}" -b ann.txt             -X POST $API/api/goals -H "Content-Type: application/json"             -d '{"title":"Байхгүй өдөр","deadline":"2027-02-30"}')
+          [ "$code" = "400" ] || { echo "БАЙХГҮЙ ӨДРИЙГ ХҮЛЭЭЖ АВАВ: $code"; exit 1; }
+
+          echo "--- 47. Буруу хэлбэр → 400 ---"
+          for value in "маргааш" "2027/06/15" "2027-6-5" "15-06-2027"; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -b ann.txt               -X POST $API/api/goals -H "Content-Type: application/json"               -d '{"title":"Буруу хэлбэр","deadline":"'"$value"'"}')
+            [ "$code" = "400" ] || { echo "'$value' → ХҮЛЭЭСЭН 400, ИРСЭН $code"; exit 1; }
+          done
+
+          echo "--- 48. Хэтэрхий хол хугацаа → 400 ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -b ann.txt             -X POST $API/api/goals -H "Content-Type: application/json"             -d '{"title":"Хол хугацаа","deadline":"'"$FAR"'"}')
+          [ "$code" = "400" ] || { echo "ХҮЛЭЭСЭН 400, ИРСЭН $code"; exit 1; }
+
+          echo "--- 49. Frontend — үлдсэн хоног харагдана ---"
+          curl -s -o dl.html -b ann.txt $WEB/goals
+          grep -q "Шалгалтанд бэлдэх" dl.html || { echo "зорилго хуудсан дээр алга"; exit 1; }
+          grep -q "3 хоног үлдсэн" dl.html || {
+            echo "ҮЛДСЭН ХОНОГ ХАРАГДСАНГҮЙ"
+            grep -o 'хоног[^<]*' dl.html | head
+            exit 1
+          }
+          grep -q "Өнөөдөр дуусна" dl.html || { echo "'Өнөөдөр дуусна' алга"; exit 1; }
+
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          # Хугацаа хэтэрсэн зорилгыг API-аар ҮҮСГЭХ БОЛОМЖГҮЙ (45-г
+          # хар). Иймээс тэр харагдацыг шалгахын тулд ӨС дээр нэг мөрийг
+          # шууд өнгөрсөн болгоно — цаг хүлээх өөр арга байхгүй.
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          echo "--- 50. Хугацаа хэтэрсэн зорилго тэмдэглэгдэнэ ---"
+          # Өдрийг runner дээр аппын цагийн бүсээр тооцоод ШУУД өгнө.
+          # Postgres-ийн `current_date` нь контейнерийн UTC өдөр — UTC
+          # 16:00-24:00-ийн хооронд Улаанбаатараас нэг өдөр хоцордог тул
+          # түүнээс тоолвол тест өдөрт найман цаг унах байв.
+          docker compose exec -T db psql -U goal -d goal_app -c             "update tb_goals set deadline = '$OVERDUE'::date where title = 'Шалгалтанд бэлдэх';"
+          curl -s -o overdue.html -b ann.txt $WEB/goals
+          grep -q "Хугацаа 9 хоногоор хэтэрсэн" overdue.html || {
+            echo "ХЭТЭРСЭН ХУГАЦАА ТЭМДЭГЛЭГДСЭНГҮЙ"
+            grep -o 'хэтэрсэн[^<]*\|хоног[^<]*' overdue.html | head
+            exit 1
+          }
+
+          # Утгыг зөвхөн ӨНГӨӨР дамжуулж болохгүй (WCAG 1.4.1). Текст
+          # нь өөрөө "хэтэрсэн" гэж хэлж байгааг дээр шалгалаа; энд
+          # өнгө нь ТҮҮН ДЭЭР НЭМЭЛТ болж байгааг барина.
+          echo "--- 51. Хэтэрсэн хугацаа danger өнгөтэй ---"
+          grep -q "text-danger" overdue.html || { echo "danger өнгө алга"; exit 1; }
+
+          echo "ДУУСАХ ХУГАЦААНЫ ХЭСЭГ АМЖИЛТТАЙ"
+
       - name: Сервисүүдийн лог
         if: always()
         run: docker compose logs --no-color | tee docker-run.log

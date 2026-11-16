@@ -9,6 +9,7 @@ import {
   TextField,
 } from "../_components/form";
 import { createGoal, type FieldErrors, type Goal } from "@/src/lib/api";
+import { describeDeadline } from "@/src/lib/dates";
 
 /**
  * Зорилгын жагсаалт ба шинээр үүсгэх форм.
@@ -16,26 +17,45 @@ import { createGoal, type FieldErrors, type Goal } from "@/src/lib/api";
  * Эхний жагсаалт сервер талаас бэлэн ирнэ. Шинэ зорилго нэмэгдэхэд
  * хуудсыг бүтнээр дахин ачаалахгүй, жагсаалтдаа шууд нэмнэ — дараа
  * нь `router.refresh()` сервер талын хуулбарыг нь цэгцэлнэ.
+ *
+ * `today` нь серверээс пропоор ирнэ. Энд `new Date()` дуудвал сервер
+ * ба хөтөч хоёр өөр өдөр гаргаж hydration зөрөх эрсдэлтэй.
  */
-export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
+export function GoalsClient({
+  initialGoals,
+  today,
+}: {
+  initialGoals: Goal[];
+  today: string;
+}) {
   const [goals, setGoals] = useState(initialGoals);
 
   return (
     <>
       <Card>
-        <GoalForm onCreated={(goal) => setGoals((list) => [goal, ...list])} />
+        <GoalForm
+          today={today}
+          onCreated={(goal) => setGoals((list) => [goal, ...list])}
+        />
       </Card>
 
-      <GoalList goals={goals} />
+      <GoalList goals={goals} today={today} />
     </>
   );
 }
 
-function GoalForm({ onCreated }: { onCreated: (goal: Goal) => void }) {
+function GoalForm({
+  today,
+  onCreated,
+}: {
+  today: string;
+  onCreated: (goal: Goal) => void;
+}) {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [deadline, setDeadline] = useState("");
   const [pending, setPending] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string>();
@@ -47,13 +67,20 @@ function GoalForm({ onCreated }: { onCreated: (goal: Goal) => void }) {
     setFormError(undefined);
     setPending(true);
 
-    const result = await createGoal({ title, description });
+    // Хоосон хугацааг ОГТ илгээхгүй. "" гэж илгээвэл "тохируулаагүй"
+    // гэдгийг "хоосон бичсэн" гэснээс ялгах шалтгаан байхгүй болно.
+    const result = await createGoal({
+      title,
+      description,
+      ...(deadline === "" ? {} : { deadline }),
+    });
     setPending(false);
 
     if (result.ok) {
       onCreated(result.data.goal);
       setTitle("");
       setDescription("");
+      setDeadline("");
       router.refresh();
       return;
     }
@@ -99,6 +126,18 @@ function GoalForm({ onCreated }: { onCreated: (goal: Goal) => void }) {
           hint="Яагаад энэ зорилго чухал вэ, юу гэж тоолох вэ."
           disabled={pending}
         />
+
+        <TextField
+          id="deadline"
+          label="Дуусах хугацаа"
+          type="date"
+          min={today}
+          value={deadline}
+          onChange={setDeadline}
+          error={errors.deadline}
+          hint="Заавал биш. Хугацаа тавих нь төвлөрөхөд тусална."
+          disabled={pending}
+        />
       </div>
 
       <SubmitButton
@@ -110,7 +149,7 @@ function GoalForm({ onCreated }: { onCreated: (goal: Goal) => void }) {
   );
 }
 
-function GoalList({ goals }: { goals: Goal[] }) {
+function GoalList({ goals, today }: { goals: Goal[]; today: string }) {
   if (goals.length === 0) {
     return <EmptyState />;
   }
@@ -134,10 +173,82 @@ function GoalList({ goals }: { goals: Goal[] }) {
                 {goal.description}
               </p>
             )}
+            {goal.deadline !== null && (
+              <Deadline deadline={goal.deadline} today={today} />
+            )}
           </li>
         ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * Зорилгын дуусах хугацаа.
+ *
+ * Үлдсэн хоногийг эхэлж бичнэ — "7 хоног үлдсэн" нь "11 дүгээр сарын
+ * 10"-аас хамаагүй шууд ойлгогддог. Яг өдрийг хажууд нь үлдээнэ,
+ * хуанлиндаа тэмдэглэхэд хэрэгтэй.
+ *
+ * Хугацаа хэтэрсэн гэдгийг ГУРВАН зүйл зэрэг хэлнэ: текст, дүрс,
+ * өнгө. Зөвхөн өнгөөр хэлбэл өнгө сохор хэрэглэгч түүнийг хармагц
+ * мэдэхгүй (WCAG 1.4.1).
+ */
+function Deadline({ deadline, today }: { deadline: string; today: string }) {
+  const { label, date, overdue, soon } = describeDeadline(deadline, today);
+
+  const tone = overdue
+    ? "text-danger"
+    : soon
+      ? "text-warning"
+      : "text-muted";
+
+  return (
+    <p className={`mt-2.5 flex items-center gap-1.5 text-sm ${tone}`}>
+      {overdue ? <AlertIcon /> : <ClockIcon />}
+      <span className="font-medium">{label}</span>
+      <span className="text-muted">·</span>
+      <time dateTime={deadline} className="text-muted">
+        {date}
+      </time>
+    </p>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4 shrink-0"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4 shrink-0"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v4.5" />
+      <path d="M12 16h.01" />
+    </svg>
   );
 }
 

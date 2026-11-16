@@ -29,7 +29,8 @@ export type FieldName =
   | "currentPassword"
   | "newPassword"
   | "title"
-  | "description";
+  | "description"
+  | "deadline";
 
 export type FieldErrors = Partial<Record<FieldName, string>>;
 
@@ -236,6 +237,8 @@ export function listGoals(): Promise<ApiResult<{ goals: Goal[] }>> {
 export type NewGoal = {
   title: string;
   description?: string;
+  /** "YYYY-MM-DD". Тохируулаагүй бол огт илгээхгүй. */
+  deadline?: string;
 };
 
 export function createGoal(input: NewGoal): Promise<ApiResult<{ goal: Goal }>> {
