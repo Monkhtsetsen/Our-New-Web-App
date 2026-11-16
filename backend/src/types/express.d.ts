@@ -7,7 +7,6 @@ import type { PublicUser } from "../auth/session.js";
  * бол `undefined` байна — тиймээс заавал шалгана.
  */
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: PublicUser;
