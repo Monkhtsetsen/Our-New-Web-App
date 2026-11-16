@@ -56,3 +56,8 @@ desktop.ini
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# ── Суулгах binary (kubectl/minikube татаж тавьсан файл) ───────────────
+minikube-linux-amd64
+minikube-*
+kubectl
