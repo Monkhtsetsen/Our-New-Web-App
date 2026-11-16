@@ -23,7 +23,7 @@ describe("Лаб 10 — validateGoal (AAA)", () => {
     const { errors, goal } = validateGoal(input, today);
 
     // Assert
-    expect(errors).toEqual({});
+    expect(errors).toEqual({ title: "Буруу" });
     expect(goal.title).toBe("Шалгалтанд бэлдэх");
     expect(goal.deadline).toBe("2027-01-15");
   });
