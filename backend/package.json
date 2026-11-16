@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "lint": "eslint ."
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",
@@ -23,6 +24,7 @@
     "postgres": "^3.4.9"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
@@ -30,9 +32,11 @@
     "@types/node": "^24.19.2",
     "@types/supertest": "^6.0.3",
     "drizzle-kit": "^0.31.11",
+    "eslint": "^9.39.1",
     "supertest": "^7.1.4",
     "tsx": "^4.20.6",
     "typescript": "^5",
+    "typescript-eslint": "^8.46.0",
     "vitest": "^5.0.5"
   }
 }

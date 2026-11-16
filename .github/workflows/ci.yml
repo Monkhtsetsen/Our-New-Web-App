@@ -35,6 +35,9 @@ jobs:
       - name: Lint шалгах
         run: npm run lint
 
+      - name: Dependency audit (тайланд)
+        run: npm audit --audit-level=high || true
+
       - name: Нэгж тест
         run: npm test
 
@@ -45,7 +48,7 @@ jobs:
   # Backend — Node + Express (backend/)
   # ===================================================================
   backend:
-    name: Backend — typecheck, тест, build
+    name: Backend — lint, typecheck, тест, build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -65,6 +68,9 @@ jobs:
       - name: Хамаарал суулгах
         run: npm ci
 
+      - name: Lint шалгах
+        run: npm run lint
+
       - name: Төрөл шалгах
         run: npm run typecheck
 
@@ -73,6 +79,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Dependency audit (тайланд)
+        run: npm audit --audit-level=high || true
 
   # ===================================================================
   # Гурван сервисийг зэрэг асааж, бүтнээр нь шалгана.
