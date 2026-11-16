@@ -1,10 +1,14 @@
 import { Router } from "express";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../db/index.js";
 import { goals } from "../db/schema.js";
 import type { AuthConfig } from "../auth/session.js";
 import { requireAuth } from "../middleware/require-auth.js";
-import { validateGoal } from "../goals/validation.js";
+import {
+  isGoalCategory,
+  validateGoal,
+  type GoalCategory,
+} from "../goals/validation.js";
 
 /**
  * Хариуд гарах баганууд.
@@ -30,9 +34,13 @@ export function createGoalsRouter(config: AuthConfig): Router {
   router.use(requireAuth(config));
 
   /**
-   * GET /api/goals
+   * GET /api/goals?category=health
    *
    * Нэвтэрсэн хэрэглэгчийн зорилгууд, шинэ нь эхэндээ.
+   *
+   * `category` нь сонголт. Бичсэн ч танихгүй утга бол 400 —
+   * чимээгүйхэн БҮХ зорилгыг буцаахгүй. "?category=helth" гэж
+   * бичихэд шүүлтүүр ажиллаагүйг хэрэглэгч мэдэх ёстой.
    *
    * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    * `where(eq(goals.userId, user.id))` нь энэ файлын ХАМГИЙН ЧУХАЛ мөр.
@@ -50,11 +58,30 @@ export function createGoalsRouter(config: AuthConfig): Router {
         return;
       }
 
+      // Query-ийн утга нь массив ч байж болно ("?category=a&category=b").
+      // Иймээс мөр эсэхийг тусад нь шалгана.
+      const raw = req.query.category;
+      let category: GoalCategory | undefined;
+
+      if (raw !== undefined) {
+        if (typeof raw !== "string" || !isGoalCategory(raw)) {
+          res.status(400).json({ errors: { category: "Ангилал буруу байна" } });
+          return;
+        }
+        category = raw;
+      }
+
       const db = getDb();
       const rows = await db
         .select(PUBLIC_GOAL_COLUMNS)
         .from(goals)
-        .where(eq(goals.userId, user.id))
+        .where(
+          // `userId` нь ЗААВАЛ хэвээр. Ангиллыг түүний ОРОНД биш,
+          // ДЭЭР нь нэмнэ — `and` гэж бичсэний гол шалтгаан энэ.
+          category === undefined
+            ? eq(goals.userId, user.id)
+            : and(eq(goals.userId, user.id), eq(goals.category, category)),
+        )
         .orderBy(desc(goals.createdAt));
 
       res.status(200).json({ goals: rows });
@@ -64,7 +91,7 @@ export function createGoalsRouter(config: AuthConfig): Router {
   /**
    * POST /api/goals
    *
-   * Хүлээн авах:  { title, description?, deadline? }
+   * Хүлээн авах:  { title, description?, deadline?, category? }
    *
    * Буцаах:
    *   201  { goal: {...} }
@@ -101,6 +128,7 @@ export function createGoalsRouter(config: AuthConfig): Router {
           title: goal.title,
           description: goal.description,
           deadline: goal.deadline,
+          category: goal.category,
         })
         .returning(PUBLIC_GOAL_COLUMNS);
 

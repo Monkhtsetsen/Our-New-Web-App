@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import type { Goal, User } from "./api";
+import type { Goal, GoalCategory, User } from "./api";
 
 /**
  * Серверийн талаас backend рүү хандах.
@@ -96,11 +96,18 @@ async function fetchAsUser<T>(path: string): Promise<T | null> {
 /**
  * Хэрэглэгчийн зорилгууд.
  *
+ * @param category Заасан бол зөвхөн тэр ангиллынх
  * @returns Жагсаалт, эсвэл татаж чадаагүй бол `null`. Хоосон жагсаалт
  *   (`[]`) ба алдаа (`null`) хоёрыг ЯЛГАЖ буцаана — "зорилго алга" ба
  *   "уншиж чадсангүй" хоёр тэс өөр зүйл, хуудас өөр өөр зүйл харуулна.
  */
-export async function getGoals(): Promise<Goal[] | null> {
-  const body = await fetchAsUser<{ goals: Goal[] }>("/api/goals");
+export async function getGoals(
+  category?: GoalCategory,
+): Promise<Goal[] | null> {
+  // Ангиллыг backend дээр шүүнэ, энд биш. Бүх зорилгыг татаад JS дээр
+  // шүүвэл зорилго олшрох тусам дэмий өгөгдөл зөөнө — шүүх ажил нь
+  // ӨС-ийн ажил.
+  const query = category === undefined ? "" : `?category=${category}`;
+  const body = await fetchAsUser<{ goals: Goal[] }>(`/api/goals${query}`);
   return body?.goals ?? null;
 }

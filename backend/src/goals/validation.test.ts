@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_GOAL_CATEGORY,
+  GOAL_CATEGORIES,
   GOAL_DEADLINE_MAX_YEARS,
   GOAL_DESCRIPTION_MAX_LENGTH,
   GOAL_TITLE_MAX_LENGTH,
+  isGoalCategory,
   validateGoal,
 } from "./validation.js";
 
@@ -115,6 +118,7 @@ describe("validateGoal — хүсэлтээс авч болохгүй талба
 
     expect(errors).toEqual({});
     expect(Object.keys(goal).sort()).toEqual([
+      "category",
       "deadline",
       "description",
       "title",
@@ -253,5 +257,101 @@ describe("validateGoal — дуусах хугацаа", () => {
 
     expect(errors.title).toBeDefined();
     expect(errors.deadline).toBeDefined();
+  });
+});
+
+describe("validateGoal — ангилал", () => {
+  it("сонгоогүй бол анхны ангилал", () => {
+    for (const value of [undefined, null, "", "   "]) {
+      const { errors, goal } = validateGoal(
+        { title: "Марафон гүйх", category: value },
+        TODAY,
+      );
+
+      expect(errors).toEqual({});
+      expect(goal.category).toBe(DEFAULT_GOAL_CATEGORY);
+    }
+  });
+
+  it("таван ангилал бүгд хүчинтэй", () => {
+    for (const category of GOAL_CATEGORIES) {
+      const { errors, goal } = validateGoal(
+        { title: "Марафон гүйх", category },
+        TODAY,
+      );
+
+      expect(errors, category).toEqual({});
+      expect(goal.category).toBe(category);
+    }
+  });
+
+  /**
+   * Танихгүй ангиллыг ЧИМЭЭГҮЙХЭН залруулахгүй.
+   *
+   * "helth" гэж бичихэд "personal" дор хадгалбал хэрэглэгч эрүүл
+   * мэндийн шүүлтүүрээс зорилгоо хэзээ ч олохгүй, яагаад гэдгийг ч
+   * мэдэхгүй. Алдаа хэлэх нь дүлий залруулгаас дээр.
+   */
+  it("танихгүй ангиллыг татгалзана", () => {
+    for (const value of ["helth", "HEALTH", "work", "хувийн"]) {
+      const { errors } = validateGoal(
+        { title: "Марафон гүйх", category: value },
+        TODAY,
+      );
+
+      expect(errors.category, value).toBeDefined();
+    }
+  });
+
+  it("мөр биш утгыг татгалзана", () => {
+    for (const value of [42, true, ["health"], { name: "health" }]) {
+      const { errors } = validateGoal(
+        { title: "Марафон гүйх", category: value },
+        TODAY,
+      );
+
+      expect(errors.category, JSON.stringify(value)).toBeDefined();
+    }
+  });
+
+  it("алдааны мессеж нь боломжит утгуудыг нэрлэнэ", () => {
+    const { errors } = validateGoal(
+      { title: "Марафон гүйх", category: "work" },
+      TODAY,
+    );
+
+    for (const category of GOAL_CATEGORIES) {
+      expect(errors.category).toContain(category);
+    }
+  });
+});
+
+describe("isGoalCategory", () => {
+  it("зөв ангиллыг танина", () => {
+    for (const category of GOAL_CATEGORIES) {
+      expect(isGoalCategory(category), category).toBe(true);
+    }
+  });
+
+  it("бусдыг татгалзана", () => {
+    for (const value of ["", " health", "Health", "work", "__proto__"]) {
+      expect(isGoalCategory(value), JSON.stringify(value)).toBe(false);
+    }
+  });
+
+  /**
+   * Жагсаалт нь schema-гийн enum-тэй нэг.
+   *
+   * Хуулж бичсэн жагсаалт нь schema дээр ангилал нэмэхэд хоцорно.
+   * Энэ тест тэр хоцрогдлыг барина.
+   */
+  it("таван ангилал, schema-тай ижил", () => {
+    expect([...GOAL_CATEGORIES].sort()).toEqual([
+      "career",
+      "finance",
+      "health",
+      "personal",
+      "study",
+    ]);
   });
 });
