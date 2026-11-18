@@ -661,6 +661,150 @@ jobs:
 
           echo " АНГИЛЛЫН ХЭСЭГ АМЖИЛТТАЙ"
 
+      - name: Зорилго засахыг шалгах
+        run: |
+          API=http://localhost:4000
+          WEB=http://localhost:3000
+          export TZ=Asia/Ulaanbaatar
+          TODAY=$(date +%Y-%m-%d)
+          FUTURE=$(date -d "+40 days" +%Y-%m-%d)
+          PAST=$(date -d "-5 days" +%Y-%m-%d)
+
+          echo "--- Засах зорилго үүсгэх ---"
+          curl -s -o e0.json -b ann.txt -X POST $API/api/goals \
+            -H "Content-Type: application/json" \
+            -d '{"title":"Хуучин нэр","description":"Хуучин тайлбар","category":"study"}'
+          GID=$(grep -o '"id":"[^"]*"' e0.json | head -1 | cut -d'"' -f4)
+          CREATED=$(grep -o '"createdAt":"[^"]*"' e0.json | head -1 | cut -d'"' -f4)
+          echo "id=$GID createdAt=$CREATED"
+
+          echo "--- 62. Гарчиг, тайлбар, ангиллыг засах ---"
+          code=$(curl -s -o e1.json -w "%{http_code}" -b ann.txt \
+            -X PUT $API/api/goals/$GID -H "Content-Type: application/json" \
+            -d '{"title":"Шинэ нэр","description":"Шинэ тайлбар","category":"health"}')
+          cat e1.json; echo
+          [ "$code" = "200" ] || { echo "ХҮЛЭЭСЭН 200, ИРСЭН $code"; exit 1; }
+          grep -q '"title":"Шинэ нэр"' e1.json || { echo "гарчиг засагдсангүй"; exit 1; }
+          grep -q '"description":"Шинэ тайлбар"' e1.json || { echo "тайлбар засагдсангүй"; exit 1; }
+          grep -q '"category":"health"' e1.json || { echo "ангилал засагдсангүй"; exit 1; }
+
+          # `updatedAt` нь `defaultNow()`-тэй ч тэр нь ЗӨВХӨН INSERT-д
+          # ажилладаг. Гараар тавихгүй бол засвар хийсэн ч "хэзээ
+          # засагдсан" нь үүсгэсэн цаг хэвээр хоцорно.
+          echo "--- 63. updatedAt шинэчлэгдэж, createdAt хэвээр ---"
+          UPDATED=$(grep -o '"updatedAt":"[^"]*"' e1.json | head -1 | cut -d'"' -f4)
+          NEW_CREATED=$(grep -o '"createdAt":"[^"]*"' e1.json | head -1 | cut -d'"' -f4)
+          echo "createdAt: $CREATED → $NEW_CREATED"
+          echo "updatedAt: $UPDATED"
+          [ "$CREATED" = "$NEW_CREATED" ] || { echo "createdAt ӨӨРЧЛӨГДӨВ"; exit 1; }
+          [ "$UPDATED" != "$CREATED" ] || { echo "updatedAt ШИНЭЧЛЭГДСЭНГҮЙ"; exit 1; }
+
+          echo "--- 64. Байхгүй талбар хөндөгдөхгүй ---"
+          curl -s -o e2.json -b ann.txt -X PUT $API/api/goals/$GID \
+            -H "Content-Type: application/json" -d '{"title":"Гуравдахь нэр"}'
+          grep -q '"description":"Шинэ тайлбар"' e2.json || {
+            echo "ТАЙЛБАР УСТГАГДАВ — зөвхөн гарчгийг заасан"; exit 1; }
+          grep -q '"category":"health"' e2.json || { echo "АНГИЛАЛ ЗАЛРАГДАВ"; exit 1; }
+
+          echo "--- 65. Тайлбар, хугацааг авч хаяж болно ---"
+          curl -s -o e3.json -b ann.txt -X PUT $API/api/goals/$GID \
+            -H "Content-Type: application/json" \
+            -d '{"deadline":"'"$FUTURE"'"}'
+          grep -q "\"deadline\":\"$FUTURE\"" e3.json || { echo "хугацаа тавигдсангүй"; exit 1; }
+          curl -s -o e4.json -b ann.txt -X PUT $API/api/goals/$GID \
+            -H "Content-Type: application/json" -d '{"description":"","deadline":null}'
+          grep -q '"description":null' e4.json || { echo "тайлбар авч хаягдсангүй"; exit 1; }
+          grep -q '"deadline":null' e4.json || { echo "хугацаа авч хаягдсангүй"; exit 1; }
+
+          echo "--- 66. Гарчгийг авч хаяж БОЛОХГҮЙ ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -b ann.txt \
+            -X PUT $API/api/goals/$GID -H "Content-Type: application/json" \
+            -d '{"title":"   "}')
+          [ "$code" = "400" ] || { echo "ХООСОН ГАРЧИГ ХҮЛЭЭЖ АВАВ: $code"; exit 1; }
+
+          echo "--- 67. Төлөв: биелсэн → хийгдэж байна (хоёр чиглэлд) ---"
+          curl -s -o s1.json -b ann.txt -X PUT $API/api/goals/$GID \
+            -H "Content-Type: application/json" -d '{"status":"completed"}'
+          grep -q '"status":"completed"' s1.json || { echo "биелсэн болсонгүй"; exit 1; }
+          curl -s -o s2.json -b ann.txt -X PUT $API/api/goals/$GID \
+            -H "Content-Type: application/json" -d '{"status":"in_progress"}'
+          grep -q '"status":"in_progress"' s2.json || { echo "БУЦАЖ БОЛСОНГҮЙ"; exit 1; }
+
+          echo "--- 68. Танихгүй төлөв, ангилал → 400 ---"
+          for body in '{"status":"done"}' '{"category":"work"}' '{"deadline":"'"$PAST"'"}'; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -b ann.txt \
+              -X PUT $API/api/goals/$GID -H "Content-Type: application/json" -d "$body")
+            [ "$code" = "400" ] || { echo "$body → ХҮЛЭЭСЭН 400, ИРСЭН $code"; exit 1; }
+          done
+
+          echo "--- 69. Хоосон хүсэлт → 400 ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -b ann.txt \
+            -X PUT $API/api/goals/$GID -H "Content-Type: application/json" -d '{}')
+          [ "$code" = "400" ] || { echo "ХҮЛЭЭСЭН 400, ИРСЭН $code"; exit 1; }
+
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          # ХАМГИЙН ЧУХАЛ ШАЛГАЛТ.
+          #
+          # Засах зам нь `id`-г ХҮСЭЛТЭЭС авдаг — үүсгэх, жагсаахаас
+          # тэс өөр. Эзэмшигчийг шалгахаа мартвал хэн ч бусдын
+          # зорилгыг дурын утгаар бичих боломжтой.
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          echo "--- 70. Өөр хэрэглэгчийн зорилгыг засах → 403 ---"
+          code=$(curl -s -o forb.json -w "%{http_code}" -b bob.txt \
+            -X PUT $API/api/goals/$GID -H "Content-Type: application/json" \
+            -d '{"title":"Залилсан нэр","status":"abandoned"}')
+          cat forb.json; echo
+          [ "$code" = "403" ] || { echo "ХҮЛЭЭСЭН 403, ИРСЭН $code"; exit 1; }
+
+          echo "--- 71. 403-ийн дараа өгөгдөл ӨӨРЧЛӨГДӨӨГҮЙ ---"
+          curl -s -o after.json -b ann.txt $API/api/goals
+          grep -q "Залилсан нэр" after.json && { echo "ӨГӨГДӨЛ ӨӨРЧЛӨГДӨВ"; exit 1; }
+          grep -q "Гуравдахь нэр" after.json || { echo "хуучин нэр алга"; exit 1; }
+
+          echo "--- 72. Байхгүй id → 404 ---"
+          for bad in "00000000-0000-0000-0000-000000000000" "мөр-биш-id" "123"; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -b ann.txt \
+              -X PUT "$API/api/goals/$bad" -H "Content-Type: application/json" \
+              -d '{"title":"Шинэ"}')
+            [ "$code" = "404" ] || { echo "'$bad' → ХҮЛЭЭСЭН 404, ИРСЭН $code"; exit 1; }
+          done
+
+          echo "--- 73. Нэвтрээгүй бол 401 ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X PUT $API/api/goals/$GID -H "Content-Type: application/json" \
+            -d '{"title":"Шинэ"}')
+          [ "$code" = "401" ] || { echo "ХАМГААЛАЛТГҮЙ: $code"; exit 1; }
+
+          # Зорилгыг засахад холбоотой даалгавар хэвээр үлдэх ёстой.
+          # `tb_tasks.goal_id` нь `on delete set null`-тэй тул зорилгыг
+          # УСТГАВАЛ холбоос тасарна — засахад тасрах ямар ч шалтгаан
+          # байх ёсгүй. Даалгаврын API хараахан байхгүй тул мөрийг
+          # шууд ӨС рүү тавина.
+          echo "--- 74. Засахад холбоотой даалгавар хэвээр ---"
+          UID=$(docker compose exec -T db psql -U goal -d goal_app -tA -c \
+            "select user_id from tb_goals where id = '$GID';")
+          docker compose exec -T db psql -U goal -d goal_app -c \
+            "insert into tb_tasks (user_id, goal_id, title) values ('$UID', '$GID', 'Холбоотой даалгавар');"
+          curl -s -o /dev/null -b ann.txt -X PUT $API/api/goals/$GID \
+            -H "Content-Type: application/json" -d '{"title":"Дөрөвдэх нэр"}'
+          LEFT=$(docker compose exec -T db psql -U goal -d goal_app -tA -c \
+            "select count(*) from tb_tasks where goal_id = '$GID';")
+          echo "үлдсэн даалгавар: $LEFT"
+          [ "$(echo "$LEFT" | tr -d '[:space:]')" = "1" ] || {
+            echo "ДААЛГАВАР АЛГА БОЛОВ"; exit 1; }
+
+          echo "--- 75. Frontend — засах товч, төлвийн шошго ---"
+          curl -s -o edit.html -b ann.txt $WEB/goals
+          grep -q "Засах" edit.html || { echo "засах товч алга"; exit 1; }
+          grep -q 'зорилгыг засах' edit.html || {
+            echo "товчны хүртээмжийн нэр алга"; exit 1; }
+          curl -s -o /dev/null -b ann.txt -X PUT $API/api/goals/$GID \
+            -H "Content-Type: application/json" -d '{"status":"completed"}'
+          curl -s -o done.html -b ann.txt $WEB/goals
+          grep -q "Биелсэн" done.html || { echo "БИЕЛСЭН ШОШГО АЛГА"; exit 1; }
+
+          echo "ЗАСВАРЫН ХЭСЭГ АМЖИЛТТАЙ"
+
       - name: Сервисүүдийн лог
         if: always()
         run: docker compose logs --no-color | tee docker-run.log

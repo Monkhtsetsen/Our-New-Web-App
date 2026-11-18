@@ -99,6 +99,12 @@ export type TextFieldProps = {
   hint?: string;
   disabled?: boolean;
   /**
+   * Талбарт шууд хандах ref.
+   *
+   * Форм нээгдэхэд курсорыг түүнд аваачихад хэрэглэнэ.
+   */
+  inputRef?: React.Ref<HTMLInputElement>;
+  /**
    * `type="date"`-ийн хамгийн эрт сонгож болох өдөр.
    *
    * Хөтчийн хуанли өмнөх өдрүүдийг бүдгэрүүлнэ — хэрэглэгчийг
@@ -120,6 +126,7 @@ export function TextField({
   hint,
   disabled,
   min,
+  inputRef,
 }: TextFieldProps) {
   return (
     <div>
@@ -127,6 +134,7 @@ export function TextField({
         {label}
       </label>
       <input
+        ref={inputRef}
         id={id}
         name={id}
         type={type}
@@ -299,17 +307,28 @@ export function SecondaryButton({
   onClick,
   disabled,
   type = "button",
+  ariaLabel,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
   disabled?: boolean;
   type?: "button" | "submit";
+  /**
+   * Дэлгэц уншигчид зориулсан бүтэн нэр.
+   *
+   * Жагсаалтад "Засах" гэсэн арван товч байвал дэлгэц уншигч
+   * програм тэднийг ялгаж чадахгүй. Иймээс "«Марафон гүйх»
+   * зорилгыг засах" гэж бүтнээр хэлнэ. Харагдах текст нь
+   * хэвээр "Засах" — хараад ойлгоход тэр хангалттай.
+   */
+  ariaLabel?: string;
 }) {
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
+      aria-label={ariaLabel}
       className={`${BUTTON_BASE} border border-control text-foreground hover:bg-surface-2`}
     >
       {children}

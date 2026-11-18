@@ -31,7 +31,8 @@ export type FieldName =
   | "title"
   | "description"
   | "deadline"
-  | "category";
+  | "category"
+  | "status";
 
 export type FieldErrors = Partial<Record<FieldName, string>>;
 
@@ -235,7 +236,13 @@ export function isGoalCategory(value: string): value is GoalCategory {
 }
 
 /** Backend-ийн goal_status enum-тэй тохирно. */
-export type GoalStatus = "in_progress" | "completed" | "abandoned";
+export const GOAL_STATUSES = [
+  "in_progress",
+  "completed",
+  "abandoned",
+] as const;
+
+export type GoalStatus = (typeof GOAL_STATUSES)[number];
 
 export type Goal = {
   id: string;
@@ -266,6 +273,31 @@ export type NewGoal = {
 
 export function createGoal(input: NewGoal): Promise<ApiResult<{ goal: Goal }>> {
   return request<{ goal: Goal }>("/api/goals", { method: "POST", body: input });
+}
+
+/**
+ * Зорилгын засвар.
+ *
+ * Талбар бүр сонголт: БАЙХГҮЙ талбар хөндөгдөхгүй. `null` нь
+ * "авч хаях" гэсэн утга бөгөөд зөвхөн ӨС дээр хоосон байж болох
+ * хоёр талбарт зөвшөөрөгдөнө.
+ */
+export type GoalUpdate = {
+  title?: string;
+  description?: string | null;
+  deadline?: string | null;
+  category?: GoalCategory;
+  status?: GoalStatus;
+};
+
+export function updateGoal(
+  id: string,
+  input: GoalUpdate,
+): Promise<ApiResult<{ goal: Goal }>> {
+  return request<{ goal: Goal }>(`/api/goals/${id}`, {
+    method: "PUT",
+    body: input,
+  });
 }
 
 /** Backend амьд эсэхийг шалгана. Нүүр хуудсан дээрх төлөв харуулахад. */
