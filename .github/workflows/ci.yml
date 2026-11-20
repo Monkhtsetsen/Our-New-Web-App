@@ -141,6 +141,40 @@ jobs:
           npm ci
           npx drizzle-kit migrate
 
+      # `db:ping` нь өдөр тутмын keepalive workflow-ийн гол скрипт
+      # (`.github/workflows/db-keepalive.yml`). Түүний АМЖИЛТЫН замыг
+      # зөвхөн тэнд шалгавал эвдэрсэн нь өдөр тутмын job унатал
+      # мэдэгдэхгүй. Иймээс жинхэнэ PostgreSQL дээр энд барина.
+      - name: db:ping скриптийг шалгах
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://goal:goal_local_dev@localhost:5432/goal_app
+        run: |
+          npm run db:ping | tee ping.log
+          grep -q "ӨС хариулав" ping.log || { echo "холболтын мөр алга"; exit 1; }
+          # Миграц дээр ажилласан тул журнал ба хүснэгтүүд байх ёстой.
+          grep -q "хэрэгжсэн миграц: 3" ping.log || {
+            echo "МИГРАЦЫН ТООЛОЛТ БУРУУ"; exit 1; }
+          grep -qE "tb_ хүснэгт: [1-9]" ping.log || {
+            echo "ХҮСНЭГТҮҮД ТООЛОГДСОНГҮЙ"; exit 1; }
+
+      # Хүрэхгүй ӨС дээр 1-ээр гарах ёстой. Үгүй бол өдөр тутмын job
+      # нь зогссон Supabase дээр ч "амжилттай" гэж ногоон болж байх
+      # байв — яг тэр нь энэ бүх ажлыг утгагүй болгоно.
+      - name: db:ping нь хүрэхгүй ӨС дээр унахыг шалгах
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://goal:goal_local_dev@127.0.0.1:59999/goal_app
+        run: |
+          if npm run db:ping > unreachable.log 2>&1; then
+            echo "ХҮРЭХГҮЙ ӨС ДЭЭР АМЖИЛТТАЙ ГЭЖ БУЦААВ"
+            cat unreachable.log
+            exit 1
+          fi
+          grep -q "холбогдож чадсангүй" unreachable.log || {
+            echo "алдааны тайлбар алга"; cat unreachable.log; exit 1; }
+          echo "зөв унав"
+
       - name: ӨС рүү холбогдож чадаж байгааг шалгах
         run: |
           body=$(curl -s http://localhost:4000/health/ready)

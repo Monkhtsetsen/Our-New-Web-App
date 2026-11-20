@@ -1,0 +1,79 @@
+name: ӨС-ийг сэрүүн байлгах
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ЯАГААД ЭНЭ WORKFLOW ХЭРЭГТЭЙ ВЭ
+#
+# Supabase-ийн үнэгүй төлөвлөгөө нь ДОЛОО ХОНОГ хөдөлгөөнгүй байсан
+# төслийг зогсоодог. Зогссон төсөл нь дараах алдаа буцаана:
+#
+#   PostgresError: (ENOTFOUND) tenant/user postgres.xxxx not found
+#
+# Хичээлийн явцад хоёр долоо хоног кодод хүрэлгүй байхад яг тэр нь
+# тохиолдож, орон нутагт апп ажиллахаа больсон. Өдөр бүр нэг уншилт
+# илгээх нь долоо хоногийн хязгаарт хүрэхээс сэргийлнэ.
+#
+# Долоо хоногийн хязгаарт ӨДӨР ТУТМЫН давтамж нь зургаан өдрийн
+# нөөцтэй. GitHub-ийн cron нь ачааллаас шалтгаалж цаг хүртэл
+# хойшлох, бүр нэг удаа өнжих тохиолдол байдаг — тийм ч нөөц
+# хэрэгтэй.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+on:
+  schedule:
+    # 03:17 UTC = Улаанбаатарын 11:17.
+    #
+    # Цагийн ТОЛГОЙ дээр (00 минут) тавихгүй: тэр үед GitHub-ийн
+    # дараалал хамгийн их ачаалалтай байдаг тул хойшлох магадлал
+    # өндөр. 17 дахь минут нь сийрэг.
+    - cron: "17 3 * * *"
+
+  # Гараар ч ажиллуулж болно — ӨС-ийг сэргээсний дараа шалгахад.
+  workflow_dispatch:
+
+# Уншихаас өөр эрх хэрэггүй.
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    name: ӨС-рүү өдөр тутмын хандалт
+    runs-on: ubuntu-latest
+
+    # Унтарсан ӨС-г хэдэн минут хүлээх нь дэмий.
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      # Secret тохируулаагүй бол ЧИМЭЭГҮЙ өнгөрөхгүй. Үгүй бол
+      # workflow нь өдөр бүр "амжилттай" гэж ногоон болж байхад
+      # ӨС нь зогсох байв.
+      - name: DATABASE_URL secret байгааг шалгах
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL secret тохируулаагүй байна."
+            echo ""
+            echo "Settings → Secrets and variables → Actions → New repository secret"
+            echo "  нэр:  DATABASE_URL"
+            echo "  утга: Supabase-ийн Session pooler холболтын мөр"
+            exit 1
+          fi
+          echo "secret байна"
+
+      - name: Хамаарлыг суулгах
+        working-directory: backend
+        run: npm ci
+
+      - name: ӨС-рүү хандах
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run db:ping
