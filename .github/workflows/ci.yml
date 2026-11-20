@@ -661,6 +661,137 @@ jobs:
 
           echo " АНГИЛЛЫН ХЭСЭГ АМЖИЛТТАЙ"
 
+      - name: Өнөөдрийн даалгаврыг шалгах
+        run: |
+          API=http://localhost:4000
+          WEB=http://localhost:3000
+
+          # Өдрүүдийг аппын цагийн бүсээр тооцно. Runner нь UTC дээр
+          # ажилладаг тул шууд `date` хийвэл Улаанбаатарын шөнө дундаас
+          # 08:00 хүртэлх хугацаанд өчигдрийг "өнөөдөр" гэж тоолох байв.
+          export TZ=Asia/Ulaanbaatar
+          TODAY=$(date +%Y-%m-%d)
+          TOMORROW=$(date -d "+1 day" +%Y-%m-%d)
+          YESTERDAY=$(date -d "-1 day" +%Y-%m-%d)
+          echo "өнөөдөр=$TODAY маргааш=$TOMORROW өчигдөр=$YESTERDAY"
+
+          # Батлалтыг `jq -e`-ээр бичнэ: таарвал 0, таарахгүй бол
+          # тэгээс өөр гарна. Суулгасан python нь YAML-ийн литерал
+          # блокийг тасалдаг тул тохиромжгүй.
+          ok() { jq -e "$2" "$1" > /dev/null || { echo "БАТЛАГДСАНГҮЙ: $2"; cat "$1"; exit 1; }; }
+
+          echo "--- 76. Нэвтрээгүй бол 401 ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" $API/api/tasks/today)
+          [ "$code" = "401" ] || { echo "ХАМГААЛАЛТГҮЙ: $code"; exit 1; }
+
+          echo "--- 77. Даалгавар үүсгэх ---"
+          for pair in "Өглөөний дасгал|$TODAY" "Англи хэл унших|$TODAY" "Код бичих|$TODAY" "Маргаашийн ажил|$TOMORROW" "Мартсан ажил|$YESTERDAY"; do
+            name=${pair%|*}
+            day=${pair##*|}
+            code=$(curl -s -o t.json -w "%{http_code}" -b ann.txt -X POST $API/api/tasks -H "Content-Type: application/json" -d '{"title":"'"$name"'","dueDate":"'"$day"'"}')
+            [ "$code" = "201" ] || { echo "$name → ХҮЛЭЭСЭН 201, ИРСЭН $code"; cat t.json; exit 1; }
+          done
+
+          # Хугацаагүй даалгавар — ямар ч өдрийн хуудсанд гарах ёсгүй.
+          curl -s -o nodue.json -b ann.txt -X POST $API/api/tasks -H "Content-Type: application/json" -d '{"title":"Хэзээ нэгэн цагт"}'
+          ok nodue.json '.task.dueDate == null'
+
+          echo "--- 78. Өнөөдрийн жагсаалтад ЗӨВХӨН өнөөдрийнх ---"
+          curl -s -b ann.txt $API/api/tasks/today -o today.json
+          jq -c '{date, today: [.today[].title], overdue: [.overdue[].title]}' today.json
+          ok today.json '.today | length == 3'
+          ok today.json '[.today[].title] | index("Өглөөний дасгал") != null'
+          ok today.json '[.today[].title] | index("Англи хэл унших") != null'
+          ok today.json '[.today[].title] | index("Код бичих") != null'
+
+          # Маргаашийнх, өчигдрийнх, хугацаагүй нь ОРОХГҮЙ.
+          ok today.json '[.today[].title] | index("Маргаашийн ажил") == null'
+          ok today.json '[.today[].title] | index("Мартсан ажил") == null'
+          ok today.json '[.today[].title] | index("Хэзээ нэгэн цагт") == null'
+
+          echo "--- 79. Хариунд аль өдрийн жагсаалт болохыг хэлнэ ---"
+          jq -e --arg d "$TODAY" '.date == $d' today.json > /dev/null || { echo "date буруу"; cat today.json; exit 1; }
+
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          # Биелсэнээр тэмдэглэх API нь #8-д орно. Дараалал, зураасыг
+          # шалгахын тулд ӨС дээр мөрийг шууд тэмдэглэнэ.
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          echo "--- 80. Биелсэн даалгавар жагсаалтын ДООД талд ---"
+          docker compose exec -T db psql -U goal -d goal_app -c "update tb_tasks set completed = true where title = 'Англи хэл унших';"
+          curl -s -b ann.txt $API/api/tasks/today -o sorted.json
+          jq -c '[.today[] | {title, completed}]' sorted.json
+          # jq дээр false < true тул `sort` нь биелээгүйг дээр тавина.
+          ok sorted.json '[.today[].completed] == ([.today[].completed] | sort)'
+          ok sorted.json '.today[-1].title == "Англи хэл унших"'
+
+          echo "--- 81. Хоцорсон даалгавар ТУСАД НЬ ---"
+          ok sorted.json '[.overdue[].title] | index("Мартсан ажил") != null'
+          ok sorted.json '[.today[].title] | index("Мартсан ажил") == null'
+          ok sorted.json '[.overdue[].title] | index("Маргаашийн ажил") == null'
+
+          echo "--- 82. Биелсэн хоцрогдол нь хоцрогдол БИШ ---"
+          docker compose exec -T db psql -U goal -d goal_app -c "update tb_tasks set completed = true where title = 'Мартсан ажил';"
+          curl -s -b ann.txt $API/api/tasks/today -o nover.json
+          ok nover.json '[.overdue[].title] | index("Мартсан ажил") == null'
+          docker compose exec -T db psql -U goal -d goal_app -c "update tb_tasks set completed = false where title = 'Мартсан ажил';"
+
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          # ХАМГИЙН ЧУХАЛ ШАЛГАЛТ.
+          #
+          # `where(userId)`-г мартвал хэрэглэгч бүр бусдын даалгаврыг
+          # харна (OWASP API1). Хоёр өөр хэрэглэгчээр барина.
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          echo "--- 83. Өөр хэрэглэгч ann-ы даалгаврыг ХАРАХГҮЙ ---"
+          curl -s -b bob.txt $API/api/tasks/today -o bob-today.json
+          cat bob-today.json; echo
+          ok bob-today.json '.today == []'
+          ok bob-today.json '.overdue == []'
+
+          echo "--- 84. userId, completed, xpReward-ыг хүсэлтээр тогтоох БОЛОМЖГҮЙ ---"
+          ANN_UID=$(docker compose exec -T db psql -U goal -d goal_app -tA -c "select id from tb_users where email = 'alias@example.com';" | tr -d '[:space:]')
+          curl -s -o esc.json -b bob.txt -X POST $API/api/tasks -H "Content-Type: application/json" -d '{"title":"Залилан","userId":"'"$ANN_UID"'","completed":true,"xpReward":99999}'
+          cat esc.json; echo
+          ok esc.json '.task.completed == false'
+          ok esc.json '.task.xpReward == 10'
+          curl -s -b ann.txt $API/api/tasks/today -o after.json
+          ok after.json '[.today[].title, .overdue[].title] | index("Залилан") == null'
+
+          echo "--- 85. Буруу оролт → 400 ---"
+          for body in '{"title":"  "}' '{"title":"OK","dueDate":"маргааш"}' '{"title":"OK","dueDate":"2027-02-30"}'; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -b ann.txt -X POST $API/api/tasks -H "Content-Type: application/json" -d "$body")
+            [ "$code" = "400" ] || { echo "$body → ХҮЛЭЭСЭН 400, ИРСЭН $code"; exit 1; }
+          done
+
+          echo "--- 86. Frontend /today — нэвтрээгүй бол нэвтрэх хуудас руу ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" $WEB/today)
+          [ "$code" = "307" ] || { echo "ХҮЛЭЭСЭН 307, ИРСЭН $code"; exit 1; }
+
+          echo "--- 87. Frontend /today — өнөөдрийнх харагдана, маргаашийнх үгүй ---"
+          code=$(curl -s -o today.html -w "%{http_code}" -b ann.txt $WEB/today)
+          [ "$code" = "200" ] || { echo "ХҮЛЭЭСЭН 200, ИРСЭН $code"; exit 1; }
+          grep -q "Өглөөний дасгал" today.html || { echo "өнөөдрийн даалгавар алга"; exit 1; }
+          grep -q "Код бичих" today.html || { echo "өнөөдрийн даалгавар алга"; exit 1; }
+          grep -q "Маргаашийн ажил" today.html && { echo "МАРГААШИЙНХ ХАРАГДАВ"; exit 1; }
+          grep -q "Хэзээ нэгэн цагт" today.html && { echo "ХУГАЦААГҮЙ НЬ ХАРАГДАВ"; exit 1; }
+
+          echo "--- 88. Frontend — хоцорсон хэсэг тусдаа ---"
+          grep -q "Хоцорсон" today.html || { echo "ХОЦОРСОН ХЭСЭГ АЛГА"; exit 1; }
+          grep -q "Мартсан ажил" today.html || { echo "хоцорсон даалгавар алга"; exit 1; }
+
+          # Биелснийг зөвхөн зураасаар хэлж болохгүй — `line-through`
+          # нь дэлгэц уншигчид дамжихгүй (WCAG 1.4.1). Иймээс текст ч
+          # хамт байна.
+          echo "--- 89. Frontend — биелсэн нь зураастай ба текстээр тэмдэглэгдсэн ---"
+          grep -q "line-through" today.html || { echo "ЗУРААС АЛГА"; exit 1; }
+          grep -q "биелсэн" today.html || { echo "БИЕЛСЭН ТЕКСТ АЛГА"; exit 1; }
+
+          echo "--- 90. Frontend — даалгавар байхгүй бол мэдэгдэл ба санал ---"
+          curl -s -o empty.html -b bob.txt $WEB/today
+          grep -q "Өнөөдөр даалгавар алга" empty.html || { echo "ХООСОН ТӨЛВИЙН МЭДЭГДЭЛ АЛГА"; exit 1; }
+          grep -q "Шинэ даалгавар" empty.html || { echo "ДААЛГАВАР НЭМЭХ САНАЛ АЛГА"; exit 1; }
+
+          echo "ӨНӨӨДРИЙН ДААЛГАВРЫН ХЭСЭГ АМЖИЛТТАЙ"
+
       - name: Сервисүүдийн лог
         if: always()
         run: docker compose logs --no-color | tee docker-run.log

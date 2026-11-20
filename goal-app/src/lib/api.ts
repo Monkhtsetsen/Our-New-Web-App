@@ -31,7 +31,8 @@ export type FieldName =
   | "title"
   | "description"
   | "deadline"
-  | "category";
+  | "category"
+  | "dueDate";
 
 export type FieldErrors = Partial<Record<FieldName, string>>;
 
@@ -266,6 +267,49 @@ export type NewGoal = {
 
 export function createGoal(input: NewGoal): Promise<ApiResult<{ goal: Goal }>> {
   return request<{ goal: Goal }>("/api/goals", { method: "POST", body: input });
+}
+
+export type Task = {
+  id: string;
+  goalId: string | null;
+  title: string;
+  description: string | null;
+  /**
+   * ISO агшин, эсвэл хугацаагүй бол `null`.
+   *
+   * Зорилгын `deadline` нь өдөр ("YYYY-MM-DD"), харин даалгаврын
+   * хугацаа нь АГШИН — ӨС дээр `timestamp` багана. Иймээс хоёрыг
+   * хольж болохгүй.
+   */
+  dueDate: string | null;
+  completed: boolean;
+  xpReward: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** `GET /api/tasks/today`-ийн хариу. */
+export type TodayTasks = {
+  /** Аль өдрийн жагсаалт болох ("YYYY-MM-DD", аппын цагийн бүсээр). */
+  date: string;
+  today: Task[];
+  /** Өнөөдрөөс өмнө хийх байсан, биелээгүй даалгаврууд. */
+  overdue: Task[];
+};
+
+export function listTodayTasks(): Promise<ApiResult<TodayTasks>> {
+  return request<TodayTasks>("/api/tasks/today", { method: "GET" });
+}
+
+export type NewTask = {
+  title: string;
+  description?: string;
+  /** "YYYY-MM-DD". Тохируулаагүй бол огт илгээхгүй. */
+  dueDate?: string;
+};
+
+export function createTask(input: NewTask): Promise<ApiResult<{ task: Task }>> {
+  return request<{ task: Task }>("/api/tasks", { method: "POST", body: input });
 }
 
 /** Backend амьд эсэхийг шалгана. Нүүр хуудсан дээрх төлөв харуулахад. */
