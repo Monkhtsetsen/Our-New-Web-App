@@ -1,0 +1,87 @@
+name: Миграцыг ӨС рүү хэрэгжүүлэх
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ЯАГААД ЦАГТ БИШ, ГАРААР ВЭ
+#
+# Миграц нь схемийг ӨӨРЧИЛДӨГ — багана нэмэх, устгах, төрөл солих.
+# Үүнийг автоматаар, хэн ч харахгүй үед ажиллуулах нь эрсдэлтэй:
+#
+#   - Багийн гишүүн main рүү буруу миграц оруулбал тэр нь шөнө дунд
+#     хэрэгжиж, бүгдийн ӨС-г нэг дор эвдэнэ
+#   - Хуваалцсан нэг үнэгүй төсөл тул туршилтын орчин байхгүй —
+#     буруу миграцыг буцаах нь гараар ажил болно
+#
+# Иймээс ХҮН дарж ажиллуулна. Хэрэв хожим туршилтын ӨС гарвал
+# `on: push: branches: [main]` гэж нэг мөр нэмэхэд автомат болно.
+#
+# Локал дээр ижил зүйлийг:  cd backend && npm run db:migrate
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Схемийг өөрчлөхийг зөвшөөрөх бол "хэрэгжүүл" гэж бич'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: drizzle-kit migrate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # Санамсаргүй дарахаас хамгаалах нэг хана. Хүчтэй хамгаалалт
+      # биш — зорилго нь "би юу хийж байгаагаа мэдэж байна" гэдгийг
+      # нэг секунд бодуулах.
+      - name: Зөвшөөрлийг шалгах
+        run: |
+          if [ "${{ inputs.confirm }}" != "хэрэгжүүл" ]; then
+            echo 'Зөвшөөрөл таарсангүй. "хэрэгжүүл" гэж бичих шаардлагатай.'
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: DATABASE_URL secret байгааг шалгах
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL secret тохируулаагүй байна."
+            exit 1
+          fi
+
+      - name: Хамаарлыг суулгах
+        working-directory: backend
+        run: npm ci
+
+      # Хэрэгжүүлэхийн ӨМНӨ төлвийг бичиж авна — ямар нэг зүйл
+      # буруу болбол юунаас эхэлснийг мэдэх нь хэрэгтэй.
+      - name: Өмнөх төлөв
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run db:ping
+
+      - name: Миграцыг хэрэгжүүлэх
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx drizzle-kit migrate
+
+      - name: Дараах төлөв
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run db:ping
