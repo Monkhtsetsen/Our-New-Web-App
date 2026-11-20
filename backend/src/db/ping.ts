@@ -89,6 +89,11 @@ try {
 
   // Миграц хэрэгжсэн эсэх. drizzle-kit нь журналаа `drizzle` схемд
   // хадгалдаг; схем байхгүй бол миграц хэзээ ч хэрэгжээгүй гэсэн үг.
+  //
+  // `created_at` нь миграцыг ХЭРЭГЖҮҮЛСЭН цаг БИШ — `_journal.json`
+  // дотор бичигдсэн, файлыг ГАРГАСАН цаг. Иймээс шинэ контейнер ч
+  // хуучин огноо хэлнэ. Шошгыг үүний дагуу нэрлэсэн: "хэрэгжсэн
+  // огноо" гэж бичвэл оношлогчийг ӨС хоцорсон гэж бууруу бодуулна.
   const migrations = await tryQuery("миграцын журнал", async () => {
     const rows = await sql<{ n: number; last: Date | null }[]>`
       select count(*)::int as n, max(to_timestamp(created_at / 1000)) as last
@@ -103,7 +108,9 @@ try {
   if (migrations !== null) {
     console.log(`   хэрэгжсэн миграц: ${migrations.n}`);
     if (migrations.last !== null) {
-      console.log(`   сүүлчийнх: ${migrations.last.toISOString()}`);
+      console.log(
+        `   сүүлчийн миграцыг гаргасан: ${migrations.last.toISOString()}`,
+      );
     }
   }
 
