@@ -781,10 +781,12 @@ jobs:
           # байх ёсгүй. Даалгаврын API хараахан байхгүй тул мөрийг
           # шууд ӨС рүү тавина.
           echo "--- 74. Засахад холбоотой даалгавар хэвээр ---"
-          UID=$(docker compose exec -T db psql -U goal -d goal_app -tA -c \
-            "select user_id from tb_goals where id = '$GID';")
+          # `UID` гэж нэрлэж болохгүй — bash дээр тэр нь readonly
+          # дотоод хувьсагч бөгөөд оноох гэмэгц скрипт унана.
+          OWNER=$(docker compose exec -T db psql -U goal -d goal_app -tA -c \
+            "select user_id from tb_goals where id = '$GID';" | tr -d '[:space:]')
           docker compose exec -T db psql -U goal -d goal_app -c \
-            "insert into tb_tasks (user_id, goal_id, title) values ('$UID', '$GID', 'Холбоотой даалгавар');"
+            "insert into tb_tasks (user_id, goal_id, title) values ('$OWNER', '$GID', 'Холбоотой даалгавар');"
           curl -s -o /dev/null -b ann.txt -X PUT $API/api/goals/$GID \
             -H "Content-Type: application/json" -d '{"title":"Дөрөвдэх нэр"}'
           LEFT=$(docker compose exec -T db psql -U goal -d goal_app -tA -c \
