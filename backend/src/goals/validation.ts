@@ -6,7 +6,7 @@
  * шууд хүсэлт илгээх боломжтой тул эцсийн шийдвэрийг энд гаргана.
  */
 
-import { goalCategoryEnum } from "../db/schema.js";
+import { goalCategoryEnum, goalStatusEnum } from "../db/schema.js";
 import { parseIsoDate, todayInAppZone } from "./dates.js";
 
 export const GOAL_TITLE_MAX_LENGTH = 200;
@@ -35,7 +35,27 @@ export type GoalCategory = (typeof GOAL_CATEGORIES)[number];
 /** Хэрэглэгч ангилал сонгоогүй бол. */
 export const DEFAULT_GOAL_CATEGORY: GoalCategory = "personal";
 
-export type GoalFields = "title" | "description" | "deadline" | "category";
+/**
+ * Зөвшөөрөгдөх төлвүүд.
+ *
+ * Үүсгэхэд төлөв нь ҮРГЭЛЖ `in_progress` — хүсэлтээс авдаггүй.
+ * Засахад л өөрчлөгдөж болно: "биелсэн" гэж тэмдэглэх, эсвэл
+ * андуурсан бол буцааж "хийгдэж байна" болгох нь хэрэглэгчийн эрх.
+ */
+export const GOAL_STATUSES = goalStatusEnum.enumValues;
+
+export type GoalStatus = (typeof GOAL_STATUSES)[number];
+
+export function isGoalStatus(value: string): value is GoalStatus {
+  return (GOAL_STATUSES as readonly string[]).includes(value);
+}
+
+export type GoalFields =
+  | "title"
+  | "description"
+  | "deadline"
+  | "category"
+  | "status";
 export type GoalErrors = Partial<Record<GoalFields, string>>;
 
 /** Цэгцэлсэн, ӨС рүү бичихэд бэлэн утгууд. */
@@ -203,4 +223,114 @@ function validateDeadline(
  */
 function addYears(date: string, years: number): string {
   return `${Number(date.slice(0, 4)) + years}${date.slice(4)}`;
+}
+
+/**
+ * Засварт орох талбарууд.
+ *
+ * Талбар бүр СОНГОЛТ: байхгүй бол "хөндөхгүй" гэсэн утга. Үүний
+ * ачаар гарчгийг л засахад ангилал, хугацаа нь хэвээр үлдэнэ.
+ */
+export type GoalPatch = {
+  title?: string;
+  description?: string | null;
+  deadline?: string | null;
+  category?: GoalCategory;
+  status?: GoalStatus;
+};
+
+/**
+ * Зорилгын засварыг шалгана.
+ *
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * ЯАГААД `validateGoal`-ЫГ ДАХИН ХЭРЭГЛЭХГҮЙ ВЭ
+ *
+ * Үүсгэхэд нэр нь ЗААВАЛ, засахад нэр нь СОНГОЛТ. Нэг функцээр
+ * хоёуланг хийх гэвэл "заавал эсэх" гэсэн туг нэмэх шаардлагатай
+ * болно — тэр туг нь дотор нь хоёр өөр дүрэм нуух бөгөөд аль нэгийг
+ * засахад нөгөө нь мэдэгдэхгүй эвдэрнэ. Тусад нь бичих нь хоёр
+ * дахин урт ч, хоёр дахин ойлгомжтой.
+ *
+ * ХООСОН УТГЫН УТГА нь талбар тус бүрт ӨӨР бөгөөд ӨС-ийн бүтцийг
+ * дагана:
+ *
+ *   title     notNull        → хоосон бол АЛДАА (нэргүй зорилго үгүй)
+ *   description  nullable    → хоосон бол `null` (тайлбарыг авч хаяж болно)
+ *   deadline     nullable    → хоосон бол `null` (хугацааг авч хаяж болно)
+ *   category  notNull        → хоосон бол АЛДАА
+ *   status    notNull        → хоосон бол АЛДАА
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ *
+ * `userId`, `id`, `createdAt` зэргийг ЭНД ОГТ УНШИХГҮЙ — уншвал
+ * хэрэглэгч зорилгоо өөр хүн рүү шилжүүлэх, үүсгэсэн цагаа хуурах
+ * боломжтой болно.
+ *
+ * @param today Хугацааг харьцуулах өдөр (тестэд гаднаас өгнө)
+ */
+export function validateGoalUpdate(
+  input: Record<string, unknown>,
+  today: string = todayInAppZone(),
+): { errors: GoalErrors; patch: GoalPatch } {
+  const errors: GoalErrors = {};
+  const patch: GoalPatch = {};
+
+  if (input.title !== undefined) {
+    const title = typeof input.title === "string" ? input.title.trim() : "";
+
+    if (title.length === 0) {
+      errors.title = "Зорилгынхоо нэрийг оруулна уу";
+    } else if (title.length > GOAL_TITLE_MAX_LENGTH) {
+      errors.title = `Нэр ${GOAL_TITLE_MAX_LENGTH} тэмдэгтээс урт байж болохгүй`;
+    } else {
+      patch.title = title;
+    }
+  }
+
+  if (input.description !== undefined) {
+    if (input.description === null) {
+      patch.description = null;
+    } else if (typeof input.description !== "string") {
+      errors.description = "Тайлбар буруу байна";
+    } else {
+      const trimmed = input.description.trim();
+
+      if (trimmed.length > GOAL_DESCRIPTION_MAX_LENGTH) {
+        errors.description = `Тайлбар ${GOAL_DESCRIPTION_MAX_LENGTH} тэмдэгтээс урт байж болохгүй`;
+      } else {
+        patch.description = trimmed.length === 0 ? null : trimmed;
+      }
+    }
+  }
+
+  if (input.deadline !== undefined) {
+    if (input.deadline === null) {
+      patch.deadline = null;
+    } else {
+      const { error, deadline } = validateDeadline(input.deadline, today);
+
+      if (error !== undefined) {
+        errors.deadline = error;
+      } else {
+        patch.deadline = deadline;
+      }
+    }
+  }
+
+  if (input.category !== undefined) {
+    if (typeof input.category !== "string" || !isGoalCategory(input.category)) {
+      errors.category = `Ангилал нь ${GOAL_CATEGORIES.join(", ")}-ийн аль нэг байх ёстой`;
+    } else {
+      patch.category = input.category;
+    }
+  }
+
+  if (input.status !== undefined) {
+    if (typeof input.status !== "string" || !isGoalStatus(input.status)) {
+      errors.status = `Төлөв нь ${GOAL_STATUSES.join(", ")}-ийн аль нэг байх ёстой`;
+    } else {
+      patch.status = input.status;
+    }
+  }
+
+  return { errors, patch };
 }

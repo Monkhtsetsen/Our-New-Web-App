@@ -1,21 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Card,
   FormError,
   FormSuccess,
+  SecondaryButton,
   SelectField,
   SubmitButton,
   TextField,
 } from "../_components/form";
 import {
   createGoal,
+  updateGoal,
   type FieldErrors,
   type Goal,
   type GoalCategory,
+  type GoalStatus,
 } from "@/src/lib/api";
 import {
   CATEGORIES,
@@ -61,6 +64,23 @@ export function GoalsClient({
     setGoals((list) => [goal, ...list]);
   }
 
+  /**
+   * Засагдсан зорилгыг жагсаалтад тавих.
+   *
+   * Ангилал нь өөрчлөгдсөн бол нээлттэй шүүлтүүрээс ГАРНА — тэр
+   * мөрийг жагсаалтаас хасна. Үгүй бол шүүлтүүр нь "эрүүл мэнд"
+   * байхад карьерын зорилго харагдаж, шүүлтүүрийн утга хуурамч
+   * болно.
+   */
+  function handleUpdated(goal: Goal) {
+    setGoals((list) => {
+      if (activeCategory !== undefined && goal.category !== activeCategory) {
+        return list.filter((item) => item.id !== goal.id);
+      }
+      return list.map((item) => (item.id === goal.id ? goal : item));
+    });
+  }
+
   return (
     <>
       <Card>
@@ -71,7 +91,12 @@ export function GoalsClient({
         />
       </Card>
 
-      <GoalList goals={goals} today={today} activeCategory={activeCategory} />
+      <GoalList
+        goals={goals}
+        today={today}
+        activeCategory={activeCategory}
+        onUpdated={handleUpdated}
+      />
     </>
   );
 }
@@ -225,11 +250,17 @@ function GoalList({
   goals,
   today,
   activeCategory,
+  onUpdated,
 }: {
   goals: Goal[];
   today: string;
   activeCategory?: GoalCategory;
+  onUpdated: (goal: Goal) => void;
 }) {
+  // Нэг зэрэг зөвхөн НЭГ мөр засагдана. Хэд хэдэн форм зэрэг
+  // нээлттэй байвал хэрэглэгч аль нь хадгалагдаагүйг мартана.
+  const [editingId, setEditingId] = useState<string>();
+
   if (goals.length === 0) {
     return activeCategory === undefined ? (
       <EmptyState />
@@ -253,26 +284,289 @@ function GoalList({
             key={goal.id}
             className="rounded-lg border border-line bg-surface p-4"
           >
-            <div className="flex items-start justify-between gap-3">
-              <h3 className="font-medium text-foreground">{goal.title}</h3>
-              {/* Шүүлтүүр нээлттэй байхад шошго нь илүүц — мөр бүр
-                  дээр ижил утга давтагдана. */}
-              {activeCategory === undefined && (
-                <CategoryBadge category={goal.category} />
-              )}
-            </div>
-            {goal.description !== null && (
-              <p className="mt-1.5 text-sm leading-6 text-muted">
-                {goal.description}
-              </p>
-            )}
-            {goal.deadline !== null && (
-              <Deadline deadline={goal.deadline} today={today} />
+            {editingId === goal.id ? (
+              <GoalEditForm
+                goal={goal}
+                today={today}
+                onDone={() => setEditingId(undefined)}
+                onUpdated={onUpdated}
+              />
+            ) : (
+              <GoalRow
+                goal={goal}
+                today={today}
+                showCategory={activeCategory === undefined}
+                onEdit={() => setEditingId(goal.id)}
+              />
             )}
           </li>
         ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * Төлвийн нэрс.
+ *
+ * `in_progress` нь анхны бөгөөд хамгийн түгээмэл төлөв тул мөр
+ * дээр ТУСГАЙ тэмдэглэхгүй — "хэвийн" төлөвт шошго хэрэггүй.
+ * Бусад хоёрыг л тэмдэглэнэ.
+ */
+const STATUS_LABELS: Record<GoalStatus, string> = {
+  in_progress: "Хийгдэж байна",
+  completed: "Биелсэн",
+  abandoned: "Больсон",
+};
+
+/** Жагсаалтын нэг мөр, харагдах төлөв. */
+function GoalRow({
+  goal,
+  today,
+  showCategory,
+  onEdit,
+}: {
+  goal: Goal;
+  today: string;
+  showCategory: boolean;
+  onEdit: () => void;
+}) {
+  return (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="font-medium text-foreground">{goal.title}</h3>
+        <div className="flex shrink-0 items-center gap-2">
+          {goal.status !== "in_progress" && <StatusBadge status={goal.status} />}
+          {/* Шүүлтүүр нээлттэй байхад шошго нь илүүц — мөр бүр
+              дээр ижил утга давтагдана. */}
+          {showCategory && <CategoryBadge category={goal.category} />}
+        </div>
+      </div>
+
+      {goal.description !== null && (
+        <p className="mt-1.5 text-sm leading-6 text-muted">
+          {goal.description}
+        </p>
+      )}
+
+      {goal.deadline !== null && (
+        <Deadline deadline={goal.deadline} today={today} />
+      )}
+
+      <div className="mt-3">
+        <SecondaryButton
+          onClick={onEdit}
+          ariaLabel={`«${goal.title}» зорилгыг засах`}
+        >
+          Засах
+        </SecondaryButton>
+      </div>
+    </>
+  );
+}
+
+/**
+ * Төлвийн шошго.
+ *
+ * Өнгө нь ганцаараа утга дамжуулахгүй — шошго нь төлвийнхөө нэрийг
+ * бичсэн байна (WCAG 1.4.1).
+ */
+function StatusBadge({ status }: { status: GoalStatus }) {
+  const tone =
+    status === "completed"
+      ? "bg-success-surface text-success"
+      : "bg-surface-2 text-muted";
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${tone}`}
+    >
+      {STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+/**
+ * Мөрийг засах форм.
+ *
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * ЗӨВХӨН ӨӨРЧЛӨГДСӨН ТАЛБАРЫГ ИЛГЭЭНЭ
+ *
+ * Хэрэглэгч гарчгийг л зассан бол гарчгийг л илгээнэ. Бүх талбарыг
+ * үргэлж илгээвэл:
+ *
+ *   - өнгөрсөн хугацаатай зорилгын НЭРИЙГ засах боломжгүй болно
+ *     (хугацаа нь дахин шалгагдаад "өнгөрсөн" гэж татгалзана)
+ *   - хоёр хүн зэрэг засахад нэг нь нөгөөгийн өөрчлөлтийг дарж хаана
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ */
+function GoalEditForm({
+  goal,
+  today,
+  onDone,
+  onUpdated,
+}: {
+  goal: Goal;
+  today: string;
+  onDone: () => void;
+  onUpdated: (goal: Goal) => void;
+}) {
+  const router = useRouter();
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  const [title, setTitle] = useState(goal.title);
+  const [description, setDescription] = useState(goal.description ?? "");
+  const [deadline, setDeadline] = useState(goal.deadline ?? "");
+  const [category, setCategory] = useState<GoalCategory>(goal.category);
+  const [status, setStatus] = useState<GoalStatus>(goal.status);
+
+  const [pending, setPending] = useState(false);
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<string>();
+
+  // Форм нээгдэхэд курсорыг эхний талбарт аваачна. Үгүй бол
+  // товчлуураар ажилладаг хэрэглэгч формыг нээснийхээ дараа дахин
+  // tab дарж хаана байгааг хайх шаардлагатай болно.
+  useEffect(() => {
+    titleRef.current?.focus();
+  }, []);
+
+  /** Хуучин ба шинэ утгыг тулгаж, ӨӨРЧЛӨГДСӨНИЙГ л буцаана. */
+  function buildPatch() {
+    const patch: Record<string, unknown> = {};
+
+    if (title.trim() !== goal.title) patch.title = title;
+
+    // Хоосон мөр ба `null` хоёулаа "тайлбаргүй" гэсэн утга.
+    const nextDescription = description.trim() === "" ? null : description.trim();
+    if (nextDescription !== goal.description) patch.description = nextDescription;
+
+    const nextDeadline = deadline === "" ? null : deadline;
+    if (nextDeadline !== goal.deadline) patch.deadline = nextDeadline;
+
+    if (category !== goal.category) patch.category = category;
+    if (status !== goal.status) patch.status = status;
+
+    return patch;
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const patch = buildPatch();
+
+    // Юу ч өөрчлөөгүй бол сервер рүү хандахгүй, формыг хаана.
+    if (Object.keys(patch).length === 0) {
+      onDone();
+      return;
+    }
+
+    setErrors({});
+    setFormError(undefined);
+    setPending(true);
+
+    const result = await updateGoal(goal.id, patch);
+    setPending(false);
+
+    if (result.ok) {
+      onUpdated(result.data.goal);
+      onDone();
+      router.refresh();
+      return;
+    }
+
+    if (result.status === 401) {
+      router.replace("/login?next=/goals");
+      return;
+    }
+
+    if (result.fieldErrors) {
+      setErrors(result.fieldErrors);
+      return;
+    }
+
+    setFormError(result.message);
+  }
+
+  return (
+    <form onSubmit={handleSubmit} noValidate>
+      {formError && <FormError>{formError}</FormError>}
+
+      <h3 className="text-sm font-medium text-foreground">Зорилго засах</h3>
+
+      <div className="mt-5 space-y-5">
+        <TextField
+          id={`title-${goal.id}`}
+          label="Нэр"
+          value={title}
+          onChange={setTitle}
+          error={errors.title}
+          disabled={pending}
+          inputRef={titleRef}
+        />
+
+        <TextField
+          id={`description-${goal.id}`}
+          label="Тайлбар"
+          placeholder="Заавал биш"
+          value={description}
+          onChange={setDescription}
+          error={errors.description}
+          disabled={pending}
+        />
+
+        <SelectField
+          id={`category-${goal.id}`}
+          label="Ангилал"
+          value={category}
+          onChange={(value) => setCategory(value as GoalCategory)}
+          options={CATEGORY_ORDER.map((key) => ({
+            value: key,
+            label: CATEGORIES[key].label,
+          }))}
+          error={errors.category}
+          disabled={pending}
+        />
+
+        <SelectField
+          id={`status-${goal.id}`}
+          label="Төлөв"
+          value={status}
+          onChange={(value) => setStatus(value as GoalStatus)}
+          options={(
+            ["in_progress", "completed", "abandoned"] as const
+          ).map((key) => ({ value: key, label: STATUS_LABELS[key] }))}
+          error={errors.status}
+          disabled={pending}
+        />
+
+        <TextField
+          id={`deadline-${goal.id}`}
+          label="Дуусах хугацаа"
+          type="date"
+          // Хугацааг ХӨНДӨӨГҮЙ бол `min` нь хамаагүй — сервер рүү
+          // илгээгдэхгүй. Харин шинээр сонгох бол өнгөрсөн өдрийг
+          // хаана.
+          min={today}
+          value={deadline}
+          onChange={setDeadline}
+          error={errors.deadline}
+          hint="Хоосон бол хугацаагүй."
+          disabled={pending}
+        />
+      </div>
+
+      <div className="mt-6 flex gap-3">
+        <SubmitButton
+          pending={pending}
+          label="Хадгалах"
+          pendingLabel="Хадгалж байна…"
+        />
+        <SecondaryButton onClick={onDone} disabled={pending}>
+          Болих
+        </SecondaryButton>
+      </div>
+    </form>
   );
 }
 
