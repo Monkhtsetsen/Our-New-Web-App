@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import type { Goal, GoalCategory, User } from "./api";
+import type { Goal, GoalCategory, TodayTasks, User } from "./api";
 
 /**
  * Серверийн талаас backend рүү хандах.
@@ -110,4 +110,18 @@ export async function getGoals(
   const query = category === undefined ? "" : `?category=${category}`;
   const body = await fetchAsUser<{ goals: Goal[] }>(`/api/goals${query}`);
   return body?.goals ?? null;
+}
+
+/**
+ * Өнөөдрийн ба хоцорсон даалгаврууд.
+ *
+ * Хоёр жагсаалтыг НЭГ хүсэлтээр авна — backend тэднийг нэг л удаа
+ * тооцсон "өнөөдөр"-өөс гаргадаг. Тусад нь хоёр удаа хандвал
+ * хүсэлтүүдийн хооронд шөнө дунд болж хоёр өөр өдрийн өгөгдөл
+ * холих эрсдэлтэй.
+ *
+ * @returns Хариу, эсвэл татаж чадаагүй бол `null`
+ */
+export async function getTodayTasks(): Promise<TodayTasks | null> {
+  return fetchAsUser<TodayTasks>("/api/tasks/today");
 }

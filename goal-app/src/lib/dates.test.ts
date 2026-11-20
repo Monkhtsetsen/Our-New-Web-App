@@ -3,6 +3,7 @@ import {
   APP_TIME_ZONE,
   describeDeadline,
   formatGoalDate,
+  instantToAppDate,
   todayInAppZone,
 } from "./dates";
 
@@ -116,6 +117,48 @@ describe("describeDeadline", () => {
   it("яг өдрийг хамт буцаана", () => {
     expect(describeDeadline("2026-11-10", TODAY).date).toBe(
       "11 дүгээр сарын 10",
+    );
+  });
+});
+
+describe("instantToAppDate", () => {
+  /**
+   * ГОЛ ТЕСТ.
+   *
+   * Даалгаврын хугацаа нь АГШИН. `instant.slice(0, 10)` гэж UTC-ээр
+   * хайчилбал Улаанбаатарын шөнө дундаас 08:00 хүртэлх даалгаврууд
+   * ӨМНӨХ өдөрт харагдана — "өнөөдөр" хуудас найман цаг тасралттай
+   * ажиллана гэсэн үг.
+   */
+  it("UTC-ээр хайчлахаас ӨӨР хариу гаргана", () => {
+    const instant = "2026-11-19T16:00:00.000Z";
+
+    expect(instant.slice(0, 10)).toBe("2026-11-19");
+    expect(instantToAppDate(instant)).toBe("2026-11-20");
+  });
+
+  it("Улаанбаатарын өдрийн зааг", () => {
+    // UB = UTC+8, тул UTC 16:00 нь UB-ийн шөнө дунд.
+    expect(instantToAppDate("2026-11-19T15:59:59.000Z")).toBe("2026-11-19");
+    expect(instantToAppDate("2026-11-19T16:00:00.000Z")).toBe("2026-11-20");
+    expect(instantToAppDate("2026-11-20T15:59:59.000Z")).toBe("2026-11-20");
+    expect(instantToAppDate("2026-11-20T16:00:00.000Z")).toBe("2026-11-21");
+  });
+
+  it("сар, жилийн зааг", () => {
+    expect(instantToAppDate("2026-11-30T16:00:00.000Z")).toBe("2026-12-01");
+    expect(instantToAppDate("2026-12-31T16:00:00.000Z")).toBe("2027-01-01");
+  });
+
+  it("backend-ийн dayStartUtc-тай нийцнэ", () => {
+    // backend: dayStartUtc("2026-11-20") → 2026-11-19T16:00:00.000Z
+    // Тэр агшин нь аппын бүсээр 2026-11-20-ны шөнө дунд байх ёстой.
+    expect(instantToAppDate("2026-11-19T16:00:00.000Z")).toBe("2026-11-20");
+  });
+
+  it("ISO хэлбэрээр буцаана", () => {
+    expect(instantToAppDate("2026-11-20T08:30:00.000Z")).toMatch(
+      /^\d{4}-\d{2}-\d{2}$/,
     );
   });
 });

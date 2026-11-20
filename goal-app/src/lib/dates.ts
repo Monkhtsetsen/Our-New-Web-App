@@ -150,3 +150,29 @@ export function describeDeadline(
 
   return { label: `${days} хоног үлдсэн`, date, overdue: false, soon: false };
 }
+
+/**
+ * ISO агшныг аппын бүсийн өдөр болгоно.
+ *
+ * Даалгаврын `due_date` нь АГШИН (`timestamp`) тул "аль өдрийнх вэ"
+ * гэдгийг бүсээр хөрвүүлж тооцох шаардлагатай. Улаанбаатар нь UTC+8
+ * учир `instant.slice(0, 10)` гэж UTC-ээр хайчилбал шөнө дундаас
+ * 08:00 хүртэлх даалгаврууд өмнөх өдөрт харагдана.
+ *
+ * `todayInAppZone`-тай ижил аргаар — `formatToParts` — бүтээнэ:
+ * ямар нэг хэлний кодоос ISO хэлбэр гарахыг найдвал хөрвүүлэлтийн
+ * өчүүхэн ялгаа муугаар мэдэгдэнэ.
+ */
+export function instantToAppDate(instant: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(instant));
+
+  const find = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((part) => part.type === type)?.value ?? "";
+
+  return `${find("year")}-${find("month")}-${find("day")}`;
+}

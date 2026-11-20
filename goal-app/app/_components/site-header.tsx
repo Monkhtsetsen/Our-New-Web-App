@@ -55,6 +55,9 @@ async function SessionLinks() {
       <Link href="/dashboard" className={LINK_CLASS}>
         Самбар
       </Link>
+      <Link href="/today" className={LINK_CLASS}>
+        Өнөөдөр
+      </Link>
       <Link href="/goals" className={LINK_CLASS}>
         Зорилгууд
       </Link>
