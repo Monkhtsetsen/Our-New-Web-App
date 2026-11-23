@@ -51,3 +51,54 @@ Conventional Commits-ийн угтварыг хэрэглэнэ, тайлбар�
     npm ci -> npm run lint -> npm test -> npm run build
 
 Аль нэг алхам унавал merge хийхгүй.
+
+## Өгөгдлийн сан
+
+ӨС нь Supabase дээр (PostgreSQL). Холболтын мөр нь **secret** —
+кодод хэзээ ч бичихгүй:
+
+- локал: `backend/.env` дотор `DATABASE_URL=...` (git-д орохгүй)
+- GitHub Actions: Settings → Secrets and variables → Actions →
+  `DATABASE_URL`
+
+### Схем засах
+
+Схемийн цорын ганц эх сурвалж нь [`backend/src/db/schema.ts`](backend/src/db/schema.ts).
+SQL-ийг гараар бичихгүй — схемээс гаргана:
+
+    cd backend
+    npm run db:generate     # schema.ts → drizzle/NNNN_*.sql
+    npm run db:migrate      # SQL-ийг ӨС рүү хэрэгжүүлнэ
+
+Гаргасан SQL файлыг **уншиж байж** commit хийнэ. drizzle-kit нь
+баганын нэр солихыг "устгаад шинээр нэмэх" гэж тайлбарлах тал
+бий — тэр нь өгөгдлийг алдагдуулна.
+
+Хуваалцсан ӨС рүү хэрэгжүүлэхийг
+[`.github/workflows/db-migrate.yml`](.github/workflows/db-migrate.yml)
+гараар ажиллуулж хийнэ (Actions → Миграцыг ӨС рүү хэрэгжүүлэх).
+Цагт автоматаар ажиллуулахгүй: буруу миграц шөнө дунд хэрэгжвэл
+бүгдийн ӨС нэг дор эвдэрнэ, туршилтын орчин ч байхгүй.
+
+### Supabase зогсохоос сэргийлэх
+
+Үнэгүй төлөвлөгөө нь **долоо хоног** хөдөлгөөнгүй төслийг зогсоодог.
+Зогссон төсөл нь `(ENOTFOUND) tenant/user ... not found` гэж буцаана
+— тэр үед орон нутагт апп ажиллахгүй.
+
+[`.github/workflows/db-keepalive.yml`](.github/workflows/db-keepalive.yml)
+нь өдөр бүр 03:17 UTC (УБ-ийн 11:17) цагт ӨС-рүү нэг уншилт илгээнэ.
+Зөвхөн уншина — хиймэл мөр бичиж өгөгдлийг хогжуулахгүй.
+
+Гараар шалгах:
+
+    cd backend
+    npm run db:ping
+
+Холбогдвол ӨС-ийн нэр, хэрэгжсэн миграцын тоо, `tb_` хүснэгтийн
+тоог хэлнэ. Холбогдохгүй бол 1-ээр гарна — иймээс өдөр тутмын job
+унаж, GitHub мэйл илгээнэ.
+
+**Хэрэв төсөл аль хэдийн зогссон бол** keepalive түүнийг сэргээхгүй.
+Supabase-ийн dashboard-аас "Restore" дарах, эсвэл шинэ төсөл
+үүсгээд `DATABASE_URL`-ээ сольж, `npm run db:migrate` ажиллуулна.
