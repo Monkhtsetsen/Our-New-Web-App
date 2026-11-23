@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  EMAIL_MAX_LENGTH,
+  NAME_MAX_LENGTH,
+  PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   normalizeEmail,
   normalizePhone,
@@ -340,5 +343,24 @@ describe("needsCurrentPassword", () => {
     expect(needsCurrentPassword({ phone: "+97699112233" })).toBe(true);
     expect(needsCurrentPassword({ phone: null })).toBe(true);
     expect(needsCurrentPassword({ newPassword: "shine-nuuts-ug" })).toBe(true);
+  });
+});
+
+describe("Хилийн утгын тест", () => {
+  it("нэр яг 100 тэмдэгт байвал зөвшөөрнө", () => {
+    const name = "а".repeat(NAME_MAX_LENGTH);
+    expect(validateSignup({ ...VALID, name }).name).toBeUndefined();
+  });
+  it("нууц үг яг 200 тэмдэгт байвал зөвшөөрнө", () => {
+    const password = "a".repeat(PASSWORD_MAX_LENGTH);
+    expect(validateSignup({ ...VALID, password }).password).toBeUndefined();
+  });
+  it("email яг 254 тэмдэгт байвал зөвшөөрнө", () => {
+    const contact = `${"a".repeat(EMAIL_MAX_LENGTH - 5)}@b.co`;
+    expect(validateSignup({ ...VALID, contact }).contact).toBeUndefined();
+  });
+  it("email 255 тэмдэгт бол татгалзана", () => {
+    const contact = `${"a".repeat(EMAIL_MAX_LENGTH - 4)}@b.co`;
+    expect(validateSignup({ ...VALID, contact }).contact).toBe("И-мэйл хаяг эсвэл утасны дугаар буруу байна");
   });
 });
