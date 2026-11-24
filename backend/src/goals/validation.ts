@@ -109,7 +109,7 @@ export function validateGoal(
  * сонгосон гэж бодоод, бодит байдалд "personal" дор хадгалагдвал
  * шүүлтүүр нь түүнийг хэзээ ч олохгүй.
  */
-function validateCategory(
+export function validateCategory(
   raw: unknown,
 ): { error?: string; category: GoalCategory } {
   if (raw === undefined || raw === null) {
@@ -150,7 +150,7 @@ export function isGoalCategory(value: string): value is GoalCategory {
  * "байхгүй" ба "буруу" хоёрыг ялгана: хоосон бол `null`, бичсэн ч
  * буруу бол алдаа.
  */
-function validateDeadline(
+export function validateDeadline(
   raw: unknown,
   today: string,
 ): { error?: string; deadline: string | null } {
