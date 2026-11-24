@@ -1,0 +1,135 @@
+/**
+ * Зорилгын засварын (PATCH /api/goals/:id) оролтыг шалгана.
+ *
+ * `validation.ts`-тай ижил зарчим: эцсийн шийдвэрийг сервер гаргана.
+ * Ялгаа нь — засвар ХЭСЭГЧИЛСЭН. Хүсэлтэд ирсэн талбарыг л шалгаж,
+ * `update`-д оруулна. Ирээгүй талбарт хүрэхгүй.
+ */
+
+import { goalStatusEnum } from "../db/schema.js";
+import { todayInAppZone } from "./dates.js";
+import {
+  GOAL_DESCRIPTION_MAX_LENGTH,
+  GOAL_TITLE_MAX_LENGTH,
+  type GoalCategory,
+  type GoalFields,
+  validateCategory,
+  validateDeadline,
+} from "./validation.js";
+
+export const GOAL_STATUSES = goalStatusEnum.enumValues;
+
+export type GoalStatus = (typeof GOAL_STATUSES)[number];
+
+export const GOAL_UPDATABLE_FIELDS = [
+  "title",
+  "description",
+  "deadline",
+  "category",
+  "status",
+] as const;
+
+export type GoalUpdateFields = GoalFields | "status";
+
+export type GoalUpdateErrors = Partial<
+  Record<GoalUpdateFields | "_form", string>
+>;
+
+export type GoalUpdate = Partial<{
+  title: string;
+  description: string | null;
+  deadline: string | null;
+  category: GoalCategory;
+  status: GoalStatus;
+}>;
+
+export function isGoalStatus(value: string): value is GoalStatus {
+  return (GOAL_STATUSES as readonly string[]).includes(value);
+}
+
+export function validateGoalUpdate(
+  input: Record<string, unknown>,
+  current: { deadline: string | null; status: GoalStatus },
+  today: string = todayInAppZone(),
+): {
+  errors: GoalUpdateErrors;
+  update: GoalUpdate;
+} {
+  const errors: GoalUpdateErrors = {};
+  const update: GoalUpdate = {};
+
+  const has = (key: string): boolean => Object.hasOwn(input, key);
+
+  if (!GOAL_UPDATABLE_FIELDS.some(has)) {
+    errors._form = "Засах талбар алга байна";
+    return { errors, update };
+  }
+
+  if (has("title")) {
+    if (typeof input.title !== "string") {
+      errors.title = "Нэр буруу байна";
+    } else {
+      const trimmed = input.title.trim();
+      if (trimmed.length === 0) {
+        errors.title = "Зорилгынхоо нэрийг оруулна уу";
+      } else if (trimmed.length > GOAL_TITLE_MAX_LENGTH) {
+        errors.title = `Нэр ${GOAL_TITLE_MAX_LENGTH} тэмдэгтээс урт байж болохгүй`;
+      } else {
+        update.title = trimmed;
+      }
+    }
+  }
+
+  if (has("description")) {
+    if (input.description === null) {
+      update.description = null;
+    } else if (typeof input.description !== "string") {
+      errors.description = "Тайлбар буруу байна";
+    } else {
+      const trimmed = input.description.trim();
+      if (trimmed.length > GOAL_DESCRIPTION_MAX_LENGTH) {
+        errors.description = `Тайлбар ${GOAL_DESCRIPTION_MAX_LENGTH} тэмдэгтээс урт байж болохгүй`;
+      } else {
+        update.description = trimmed.length > 0 ? trimmed : null;
+      }
+    }
+  }
+
+  if (has("deadline")) {
+    const raw = input.deadline;
+    const unchanged =
+      typeof raw === "string" &&
+      current.deadline !== null &&
+      raw.trim() === current.deadline;
+
+    if (!unchanged) {
+      const { error, deadline } = validateDeadline(raw, today);
+      if (error !== undefined) {
+        errors.deadline = error;
+      } else {
+        update.deadline = deadline;
+      }
+    }
+  }
+
+  if (has("category")) {
+    const { error, category } = validateCategory(input.category);
+    if (error !== undefined) {
+      errors.category = error;
+    } else {
+      update.category = category;
+    }
+  }
+
+  if (has("status")) {
+    const raw = input.status;
+    const trimmed = typeof raw === "string" ? raw.trim() : null;
+    if (trimmed === null || !isGoalStatus(trimmed)) {
+      errors.status = `Төлөв нь ${GOAL_STATUSES.join(", ")}-ийн аль нэг байх ёстой`;
+    } else if (trimmed !== current.status) {
+      update.status = trimmed;
+    }
+  }
+
+  return { errors, update };
+}

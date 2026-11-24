@@ -1,0 +1,80 @@
+﻿
+ RUN  v5.1.0 C:/Users/odelg/Our-New-Web-App/backend
+
+ ❯ src/goals/update-validation.lab12.test.ts (17 tests | 3 failed) 15ms
+   ❯ Лаб 12 — validateGoalUpdate: edge / аюулгүй байдал (12)
+     × REVIEW #3: хугацаа өнгөрсөн зорилгын НЭРИЙГ засахыг хаахгүй 6ms
+     × REVIEW #4: category=null нь 'personal' руу чимээгүй солихгүй 0ms
+     × REVIEW #5: нэг талбар буруу бол хагас засвар буцаахгүй 1ms
+node.exe : 
+At line:1 char:1
++ & "C:\nodejs/node.exe" "C:\nodejs/node_modules/npm/bin/npx-cli.js" vi ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/goals/update-validation.lab12.test.ts > Лаб 12 — validateGoalUpdate: edge / аюулгүй байдал > REVIEW #3: хуга
+цаа өнгөрсөн зорилгын НЭРИЙГ засахыг хаахгүй
+AssertionError: expected { Object (deadline) } to deeply equal {}
+
+- Expected
++ Received
+
+- {}
++ {
++   "deadline": "Өнгөрсөн өдрийг дуусах хугацаа болгож болохгүй",
++ }
+
+ ❯ src/goals/update-validation.lab12.test.ts:133:20
+    131|
+    132|     // Assert
+    133|     expect(errors).toEqual({});
+       |                    ^
+    134|     expect(update).toEqual({ title: "Шинэ нэр" });
+    135|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/goals/update-validation.lab12.test.ts > Лаб 12 — validateGoalUpdate: edge / аюулгүй байдал > REVIEW #4: cate
+gory=null нь 'personal' руу чимээгүй солихгүй
+AssertionError: expected undefined to be defined
+ ❯ src/goals/update-validation.lab12.test.ts:160:39
+    158|
+    159|     expect(withNull.errors.category).toBeDefined();
+    160|     expect(withEmpty.errors.category).toBeDefined();
+       |                                       ^
+    161|   });
+    162|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/goals/update-validation.lab12.test.ts > Лаб 12 — validateGoalUpdate: edge / аюулгүй байдал > REVIEW #5: нэг 
+талбар буруу бол хагас засвар буцаахгүй
+AssertionError: expected { title: 'Зөв нэр' } to deeply equal {}
+
+- Expected
++ Received
+
+- {}
++ {
++   "title": "Зөв нэр",
++ }
+
+ ❯ src/goals/update-validation.lab12.test.ts:176:20
+    174|
+    175|     expect(errors.status).toBeDefined();
+    176|     expect(update).toEqual({});
+       |                    ^
+    177|   });
+    178|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 14 passed (17)
+   Start at  09:35:10
+   Duration  646ms (import 82%, transform 14%, tests 3%, worker 1%)
+

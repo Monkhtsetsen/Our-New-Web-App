@@ -1,0 +1,319 @@
+diff --git a/backend/src/goals/validation.test.ts b/backend/src/goals/validation.test.ts
+index 8c012a1..fdbc8c3 100644
+--- a/backend/src/goals/validation.test.ts
++++ b/backend/src/goals/validation.test.ts
+@@ -7,6 +7,7 @@ import {
+   GOAL_TITLE_MAX_LENGTH,
+   isGoalCategory,
+   validateGoal,
++  validateGoalUpdate,
+ } from "./validation.js";
+ 
+ /**
+@@ -355,3 +356,62 @@ describe("isGoalCategory", () => {
+     ]);
+   });
+ });
++
++describe("validateGoalUpdate", () => {
++  it("зөвхөн илгээсэн талбаруудыг өөрчилнө", () => {
++    const { errors, changes } = validateGoalUpdate({
++      title: "  Шинэ нэр  ",
++      description: null,
++      deadline: null,
++      category: "health",
++      status: "completed",
++    }, TODAY);
++
++    expect(errors).toEqual({});
++    expect(changes).toEqual({
++      title: "Шинэ нэр",
++      description: null,
++      deadline: null,
++      category: "health",
++      status: "completed",
++    });
++  });
++
++  it("илгээгээгүй талбар нь өөрчлөлтонд гарахгүй", () => {
++    const { errors, changes } = validateGoalUpdate(
++      { title: "Зөвхөн нэр" },
++      TODAY,
++    );
++
++    expect(errors).toEqual({});
++    expect(changes).toEqual({ title: "Зөвхөн нэр" });
++  });
++
++  it("хамгаалагдсан талбаруудыг үл тоомсорлоно", () => {
++    const { errors, changes } = validateGoalUpdate({
++      id: "өөр-id",
++      userId: "өөр-хэрэглэгч",
++      createdAt: "2020-01-01",
++      updatedAt: "2020-01-01",
++    }, TODAY);
++
++    expect(errors).toEqual({});
++    expect(changes).toEqual({});
++  });
++
++  it("буруу өөрчлөлтийг татгалзана", () => {
++    const { errors } = validateGoalUpdate({
++      title: " ",
++      description: 42,
++      deadline: "2020-01-01",
++      category: null,
++      status: "done",
++    }, TODAY);
++
++    expect(errors.title).toBeDefined();
++    expect(errors.description).toBeDefined();
++    expect(errors.deadline).toBeDefined();
++    expect(errors.category).toBeDefined();
++    expect(errors.status).toBeDefined();
++  });
++});
+diff --git a/backend/src/goals/validation.ts b/backend/src/goals/validation.ts
+index db9109d..ad1cc9c 100644
+--- a/backend/src/goals/validation.ts
++++ b/backend/src/goals/validation.ts
+@@ -6,7 +6,7 @@
+  * шууд хүсэлт илгээх боломжтой тул эцсийн шийдвэрийг энд гаргана.
+  */
+ 
+-import { goalCategoryEnum } from "../db/schema.js";
++import { goalCategoryEnum, goalStatusEnum } from "../db/schema.js";
+ import { parseIsoDate, todayInAppZone } from "./dates.js";
+ 
+ export const GOAL_TITLE_MAX_LENGTH = 200;
+@@ -32,6 +32,9 @@ export const GOAL_CATEGORIES = goalCategoryEnum.enumValues;
+ 
+ export type GoalCategory = (typeof GOAL_CATEGORIES)[number];
+ 
++export const GOAL_STATUSES = goalStatusEnum.enumValues;
++export type GoalStatus = (typeof GOAL_STATUSES)[number];
++
+ /** Хэрэглэгч ангилал сонгоогүй бол. */
+ export const DEFAULT_GOAL_CATEGORY: GoalCategory = "personal";
+ 
+@@ -48,6 +51,22 @@ export type GoalInput = {
+   category: GoalCategory;
+ };
+ 
++export type GoalUpdateFields =
++  | "title"
++  | "description"
++  | "deadline"
++  | "category"
++  | "status";
++export type GoalUpdateErrors = Partial<Record<GoalUpdateFields, string>>;
++
++export type GoalChanges = {
++  title?: string;
++  description?: string | null;
++  deadline?: string | null;
++  category?: GoalCategory;
++  status?: GoalStatus;
++};
++
+ /**
+  * Шинэ зорилгын оролтыг шалгана.
+  *
+@@ -101,6 +120,98 @@ export function validateGoal(
+   return { errors, goal: { title: rawTitle, description, deadline, category } };
+ }
+ 
++/**
++ * Одоо байгаа зорилгыг хэсэгчлэн шинэчлэхэд хэрэглэнэ.
++ *
++ * Илгээгээгүй талбарыг хадгалах, илгээсэн талбарыг цэгцэлж ӨС рүү
++ * дамжуулах өөрчлөлтүүдийг л буцаана.
++ */
++export function validateGoalUpdate(
++  input: Record<string, unknown>,
++  today: string = todayInAppZone(),
++): { errors: GoalUpdateErrors; changes: GoalChanges } {
++  const errors: GoalUpdateErrors = {};
++  const changes: GoalChanges = {};
++
++  if (input.title !== undefined) {
++    const title = typeof input.title === "string" ? input.title.trim() : "";
++    if (title.length === 0) {
++      errors.title = "Зорилгынхоо нэрийг оруулна уу";
++    } else if (title.length > GOAL_TITLE_MAX_LENGTH) {
++      errors.title = `Нэр ${GOAL_TITLE_MAX_LENGTH} тэмдэгтээс урт байж болохгүй`;
++    } else {
++      changes.title = title;
++    }
++  }
++
++  if (input.description !== undefined) {
++    if (input.description === null) {
++      changes.description = null;
++    } else if (typeof input.description !== "string") {
++      errors.description = "Тайлбар буруу байна";
++    } else {
++      const description = input.description.trim();
++      if (description.length > GOAL_DESCRIPTION_MAX_LENGTH) {
++        errors.description =
++          `Тайлбар ${GOAL_DESCRIPTION_MAX_LENGTH} тэмдэгтээс урт байж болохгүй`;
++      } else {
++        changes.description = description.length === 0 ? null : description;
++      }
++    }
++  }
++
++  if (input.deadline !== undefined) {
++    if (input.deadline === null) {
++      changes.deadline = null;
++    } else {
++      const { error, deadline } = validateDeadline(input.deadline, today);
++      if (error !== undefined) {
++        errors.deadline = error;
++      } else if (deadline === null && typeof input.deadline === "string") {
++        const trimmed = input.deadline.trim();
++        if (trimmed.length === 0) changes.deadline = null;
++      } else if (deadline !== null) {
++        changes.deadline = deadline;
++      }
++    }
++  }
++
++  if (input.category !== undefined) {
++    if (input.category === null) {
++      errors.category = "Ангилал буруу байна";
++    } else {
++      const { error, category } = validateCategory(input.category);
++      if (error !== undefined) {
++        errors.category = error;
++      } else {
++        changes.category = category;
++      }
++    }
++  }
++
++  if (input.status !== undefined) {
++    if (typeof input.status !== "string" || !isGoalStatus(input.status)) {
++      errors.status =
++        `Төлөв нь ${GOAL_STATUSES.join(", ")}-ийн аль нэг байх ёстой`;
++    } else {
++      changes.status = input.status;
++    }
++  }
++
++  return { errors, changes };
++}
++
++export function validateGoalChanges(
++  input: Record<string, unknown>,
++  today: string = todayInAppZone(),
++): { errors: GoalUpdateErrors; changes: GoalChanges } {
++  return validateGoalUpdate(input, today);
++}
++
++export function isGoalStatus(value: string): value is GoalStatus {
++  return (GOAL_STATUSES as readonly string[]).includes(value);
++}
++
+ /**
+  * Ангиллыг шалгана.
+  *
+diff --git a/backend/src/routes/goals.ts b/backend/src/routes/goals.ts
+index 4316d72..ee1fd02 100644
+--- a/backend/src/routes/goals.ts
++++ b/backend/src/routes/goals.ts
+@@ -7,6 +7,7 @@ import { requireAuth } from "../middleware/require-auth.js";
+ import {
+   isGoalCategory,
+   validateGoal,
++  validateGoalUpdate,
+   type GoalCategory,
+ } from "../goals/validation.js";
+ 
+@@ -140,5 +141,57 @@ export function createGoalsRouter(config: AuthConfig): Router {
+     })().catch(next);
+   });
+ 
++  router.put("/:id", (req, res, next) => {
++    (async () => {
++      const user = req.user;
++      if (user === undefined) {
++        res.status(401).json({ error: "Нэвтэрнэ үү" });
++        return;
++      }
++
++      const body: unknown = req.body;
++      if (typeof body !== "object" || body === null) {
++        res.status(400).json({ errors: { title: "Хүсэлтийн бие буруу байна" } });
++        return;
++      }
++
++      const { errors, changes } = validateGoalUpdate(
++        body as Record<string, unknown>,
++      );
++      if (Object.keys(errors).length > 0) {
++        res.status(400).json({ errors });
++        return;
++      }
++
++      if (Object.keys(changes).length === 0) {
++        const [current] = await getDb()
++          .select(PUBLIC_GOAL_COLUMNS)
++          .from(goals)
++          .where(and(eq(goals.id, req.params.id), eq(goals.userId, user.id)))
++          .limit(1);
++
++        if (current === undefined) {
++          res.status(404).json({ error: "Зорилго олдсонгүй" });
++          return;
++        }
++        res.status(200).json({ goal: current });
++        return;
++      }
++
++      const [updated] = await getDb()
++        .update(goals)
++        .set({ ...changes, updatedAt: new Date() })
++        .where(and(eq(goals.id, req.params.id), eq(goals.userId, user.id)))
++        .returning(PUBLIC_GOAL_COLUMNS);
++
++      if (updated === undefined) {
++        res.status(404).json({ error: "Зорилго олдсонгүй" });
++        return;
++      }
++
++      res.status(200).json({ goal: updated });
++    })().catch(next);
++  });
++
+   return router;
+ }
+diff --git a/goal-app/src/lib/api.ts b/goal-app/src/lib/api.ts
+index a534c09..6d8fc07 100644
+--- a/goal-app/src/lib/api.ts
++++ b/goal-app/src/lib/api.ts
+@@ -268,6 +268,24 @@ export function createGoal(input: NewGoal): Promise<ApiResult<{ goal: Goal }>> {
+   return request<{ goal: Goal }>("/api/goals", { method: "POST", body: input });
+ }
+ 
++export type GoalUpdate = {
++  title?: string;
++  description?: string | null;
++  deadline?: string | null;
++  category?: GoalCategory;
++  status?: GoalStatus;
++};
++
++export function updateGoal(
++  id: string,
++  input: GoalUpdate,
++): Promise<ApiResult<{ goal: Goal }>> {
++  return request<{ goal: Goal }>(`/api/goals/${id}`, {
++    method: "PUT",
++    body: input,
++  });
++}
++
+ /** Backend амьд эсэхийг шалгана. Нүүр хуудсан дээрх төлөв харуулахад. */
+ export async function checkHealth(): Promise<boolean> {
+   try {

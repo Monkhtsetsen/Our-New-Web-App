@@ -1,0 +1,9 @@
+﻿
+ RUN  v5.1.0 C:/Users/odelg/Our-New-Web-App/backend
+
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  09:02:32
+   Duration  788ms (import 89%, transform 7%, tests 4%, worker 1%)
+

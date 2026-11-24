@@ -1,0 +1,151 @@
+/**
+ * Зорилго засварлах хүсэлтийн оролтыг шалгана.
+ *
+ * Хэсэгчилсэн засварын хувьд зөвхөн хүсэлтэд ирсэн талбаруудыг
+ * шалгаж, update объектод оруулна.
+ */
+
+import { goalStatusEnum } from "../db/schema.js";
+import { todayInAppZone } from "./dates.js";
+import {
+  GOAL_DESCRIPTION_MAX_LENGTH,
+  GOAL_TITLE_MAX_LENGTH,
+  validateCategory,
+  validateDeadline,
+  type GoalCategory,
+} from "./validation.js";
+
+export type GoalStatus = (typeof goalStatusEnum.enumValues)[number];
+
+export type GoalUpdateField =
+  | "title"
+  | "description"
+  | "deadline"
+  | "category"
+  | "status";
+
+export type GoalUpdateErrors = Partial<
+  Record<GoalUpdateField | "_form", string>
+>;
+
+export type GoalUpdate = Partial<{
+  title: string;
+  description: string | null;
+  deadline: string | null;
+  category: GoalCategory;
+  status: GoalStatus;
+}>;
+
+export function validateGoalUpdate(
+  input: Record<string, unknown>,
+  current: { deadline: string | null; status: GoalStatus },
+  today: string = todayInAppZone(),
+): {
+  errors: GoalUpdateErrors;
+  update: GoalUpdate;
+} {
+  const errors: GoalUpdateErrors = {};
+  const update: GoalUpdate = {};
+
+  const allowedFields: readonly GoalUpdateField[] = [
+    "title",
+    "description",
+    "deadline",
+    "category",
+    "status",
+  ];
+
+  const hasAllowedField = allowedFields.some((field) =>
+    Object.prototype.hasOwnProperty.call(input, field),
+  );
+
+  if (!hasAllowedField) {
+    errors._form = "Засах дор хаягтай талбар ирүүлээгүй байна";
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "title")) {
+    if (typeof input.title !== "string") {
+      errors.title = "Зорилгынхоо нэрийг оруулна уу";
+    } else {
+      const title = input.title.trim();
+
+      if (title.length === 0) {
+        errors.title = "Зорилгынхоо нэрийг оруулна уу";
+      } else if (title.length > GOAL_TITLE_MAX_LENGTH) {
+        errors.title =
+          `Нэр ${GOAL_TITLE_MAX_LENGTH} тэмдэгтээс урт байж болохгүй`;
+      } else {
+        update.title = title;
+      }
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "description")) {
+    if (input.description !== null && typeof input.description !== "string") {
+      errors.description = "Тайлбар буруу байна";
+    } else {
+      if (input.description === null) {
+        update.description = null;
+      } else {
+        const description = input.description.trim();
+
+        if (description.length === 0) {
+          update.description = null;
+        } else if (description.length > GOAL_DESCRIPTION_MAX_LENGTH) {
+          errors.description =
+            `Тайлбар ${GOAL_DESCRIPTION_MAX_LENGTH} тэмдэгтээс урт байж болохгүй`;
+        } else {
+          update.description = description;
+        }
+      }
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "deadline")) {
+    if (input.deadline !== null && typeof input.deadline !== "string") {
+      errors.deadline = "Дуусах хугацаа буруу байна";
+    } else {
+      const { error, deadline } = validateDeadline(input.deadline, today);
+
+      if (error !== undefined) {
+        errors.deadline = error;
+      } else if (deadline !== current.deadline) {
+        update.deadline = deadline;
+      }
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "category")) {
+    if (typeof input.category !== "string") {
+      errors.category = "Ангилал буруу байна";
+    } else {
+      const { error, category } = validateCategory(input.category);
+
+      if (error !== undefined) {
+        errors.category = error;
+      } else {
+        update.category = category;
+      }
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "status")) {
+    if (typeof input.status !== "string") {
+      errors.status = "Зорилгын төлөв буруу байна";
+    } else if (
+      !(goalStatusEnum.enumValues as readonly string[]).includes(input.status)
+    ) {
+      errors.status =
+        `Төлөв нь ${goalStatusEnum.enumValues.join(", ")}-ийн аль нэг байх ёстой`;
+    } else {
+      const status = input.status as GoalStatus;
+
+      if (status !== current.status) {
+        update.status = status;
+      }
+    }
+  }
+
+  return { errors, update };
+}
+(+ Copilot: validation.ts-д validateCategory, validateDeadline-г export хийх шаардлагатай гэж хэлсэн)
